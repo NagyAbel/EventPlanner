@@ -1,0 +1,16 @@
+# Laravel
+/backend/vendor/
+/backend/.env
+/backend/storage/*.key
+
+# Vue / Node
+/frontend/node_modules/
+/frontend/dist/
+
+# Docker
+*.log
+
+# OS / IDE
+.DS_Store
+.idea/
+.vscode/
