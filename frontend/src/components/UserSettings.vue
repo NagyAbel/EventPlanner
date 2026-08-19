@@ -1,52 +1,118 @@
 <template>
   <section class="user-settings">
-    <div class="settings-header">
+    <div v-if="auth.user" class="settings-header">
       <div class="profile-avatar">
         <img :src="profile" alt="User profile" />
       </div>
+
       <div class="profile-meta">
         <p class="profile-kicker">Channel</p>
-        <h1>{{ user.first_name }} {{ user.last_name }}</h1>
+        <h1>{{ auth.user.name }}</h1>
       </div>
     </div>
 
-    <div class="profile-grid">
+    <div v-if="auth.user" class="profile-grid">
       <label class="profile-field">
-        <span>First Name</span>
-        <input v-model="user.first_name" type="text" maxlength="20" />
-      </label>
+        <span>Name</span>
 
-      <label class="profile-field">
-        <span>Last Name</span>
-        <input v-model="user.last_name" type="text" maxlength="20" />
+        <input
+          v-model="name"
+          type="text"
+          maxlength="40"
+          :disabled="savingName"
+          @keydown.enter="saveName"
+          @blur="saveName"
+        />
+
+        <small v-if="savingName" class="saving-text">
+          Saving...
+        </small>
       </label>
 
       <label class="profile-field profile-field--full">
         <span>Email</span>
-        <input :value="user.email" type="email" disabled />
+
+        <input
+          :value="auth.user.email"
+          type="email"
+          disabled
+        />
       </label>
     </div>
 
-    <button type="button" class="logout-button" @click="logout">Logout</button>
+    <button
+      type="button"
+      class="logout-button"
+      :disabled="auth.loading"
+      @click="logout"
+    >
+      {{ auth.loading ? 'Logging out...' : 'Logout' }}
+    </button>
   </section>
 </template>
 
-<script setup>
-import { reactive } from 'vue'
+<script setup lang="ts">
+import { ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 import profile from '@/assets/profile.svg'
 
-const user = reactive({
-  first_name: 'John',
-  last_name: 'Doe',
-  email: 'john.doe@example.com',
-})
+const auth = useAuthStore()
+const router = useRouter()
 
-const logout = () => {
-  localStorage.removeItem('token')
-  window.location.href = '/auth'
+const name = ref('')
+const savingName = ref(false)
+
+// Initialize the local input from the authenticated user.
+watch(
+  () => auth.user?.name,
+  (newName) => {
+    if (newName !== undefined && !savingName.value) {
+      name.value = newName
+    }
+  },
+  { immediate: true },
+)
+
+async function saveName() {
+  if (!auth.user || savingName.value) {
+    return
+  }
+
+  const newName = name.value.trim()
+
+  if (!newName) {
+    name.value = auth.user.name
+    return
+  }
+
+  if (newName === auth.user.name) {
+    return
+  }
+
+  savingName.value = true
+
+  try {
+    await auth.updateName(newName)
+  } catch (error) {
+    console.error('Name update failed:', error)
+
+    // Restore the value from the server if the request failed.
+    name.value = auth.user.name
+  } finally {
+    savingName.value = false
+  }
+}
+
+async function logout() {
+  try {
+    await auth.logout()
+    await router.push('/auth')
+  } catch (error) {
+    console.error('Logout failed:', error)
+  }
 }
 </script>
-
 <style scoped>
 .user-settings {
   box-sizing: border-box;
@@ -177,6 +243,11 @@ input:disabled {
 
 .logout-button:hover {
   opacity: 0.96;
+}
+
+.logout-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 @media (max-width: 560px) {

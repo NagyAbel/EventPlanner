@@ -2,31 +2,34 @@
 import { reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 
 const { t } = useI18n()
 const router = useRouter()
+const auth = useAuthStore()
 
 type AuthMode = 'login' | 'signup'
 
 const mode = ref<AuthMode>('login')
+const feedback = ref('')
 
 const form = reactive({
-  firstName: '',
-  lastName: '',
+  name: '',
   email: '',
   password: '',
+  passwordConfirmation: '',
 })
-
-const feedback = ref('')
 
 function setMode(nextMode: AuthMode) {
   mode.value = nextMode
   feedback.value = ''
 }
 
-function submitAuth() {
-  if (mode.value === 'signup' && (!form.firstName.trim() || !form.lastName.trim())) {
-    feedback.value = 'Please fill in first and last name.'
+async function submitAuth() {
+  feedback.value = ''
+
+  if (mode.value === 'signup' && !form.name.trim()) {
+    feedback.value = 'Name is required.'
     return
   }
 
@@ -35,20 +38,55 @@ function submitAuth() {
     return
   }
 
-  localStorage.setItem('token', 'demo-token')
-  feedback.value = mode.value === 'signup' ? 'Account created successfully.' : 'Logged in successfully.'
-  router.push('/profile')
+  if (
+    mode.value === 'signup' &&
+    form.password !== form.passwordConfirmation
+  ) {
+    feedback.value = 'Passwords do not match.'
+    return
+  }
+
+  try {
+    if (mode.value === 'signup') {
+      await auth.signup(
+        form.name,
+        form.email,
+        form.password,
+        form.passwordConfirmation,
+      )
+    } else {
+      await auth.login(
+        form.email,
+        form.password,
+      )
+    }
+
+    await router.push('/profile')
+  } catch (error) {
+    feedback.value =
+      error instanceof Error
+        ? error.message
+        : 'Authentication failed.'
+  }
 }
 </script>
+
 <template>
   <section class="auth-page">
     <div class="auth-card">
       <header class="auth-header">
         <p class="kicker">Account</p>
-        <h1>{{ mode === 'login' ? 'Login' : t('signup.title', 'Sign Up') }}</h1>
+
+        <h1>
+          {{ mode === 'login' ? 'Login' : t('signup.title', 'Sign Up') }}
+        </h1>
       </header>
 
-      <div class="auth-switch" role="tablist" aria-label="Switch auth mode">
+      <div
+        class="auth-switch"
+        role="tablist"
+        aria-label="Switch auth mode"
+      >
         <button
           type="button"
           class="switch-btn"
@@ -59,6 +97,7 @@ function submitAuth() {
         >
           Login
         </button>
+
         <button
           type="button"
           class="switch-btn"
@@ -71,38 +110,93 @@ function submitAuth() {
         </button>
       </div>
 
-      <form class="auth-form" @submit.prevent="submitAuth">
-        <div v-if="mode === 'signup'" class="name-grid">
-          <label class="auth-field">
-            <span>First Name</span>
-            <input v-model="form.firstName" type="text" maxlength="20" required />
-          </label>
+      <form
+        class="auth-form"
+        @submit.prevent="submitAuth"
+      >
+        <label
+          v-if="mode === 'signup'"
+          class="auth-field"
+        >
+          <span>Name</span>
 
-          <label class="auth-field">
-            <span>Last Name</span>
-            <input v-model="form.lastName" type="text" maxlength="20" required />
-          </label>
-        </div>
+          <input
+            v-model="form.name"
+            type="text"
+            maxlength="40"
+            autocomplete="name"
+            required
+          />
+        </label>
 
         <label class="auth-field">
           <span>{{ t('signup.email', 'Email') }}</span>
-          <input v-model="form.email" type="email" maxlength="80" required />
+
+          <input
+            v-model="form.email"
+            type="email"
+            maxlength="80"
+            autocomplete="email"
+            required
+          />
         </label>
 
         <label class="auth-field">
           <span>{{ t('signup.password', 'Password') }}</span>
-          <input v-model="form.password" type="password" maxlength="80" required />
+
+          <input
+            v-model="form.password"
+            type="password"
+            maxlength="80"
+            :autocomplete="
+              mode === 'login'
+                ? 'current-password'
+                : 'new-password'
+            "
+            required
+          />
         </label>
 
-        <button type="submit" class="submit-btn">
-          {{ mode === 'login' ? 'Login' : t('signup.button', 'Sign Up') }}
+        <label
+          v-if="mode === 'signup'"
+          class="auth-field"
+        >
+          <span>Confirm Password</span>
+
+          <input
+            v-model="form.passwordConfirmation"
+            type="password"
+            maxlength="80"
+            autocomplete="new-password"
+            required
+          />
+        </label>
+
+        <button
+          type="submit"
+          class="submit-btn"
+          :disabled="auth.loading"
+        >
+          {{
+            auth.loading
+              ? 'Please wait...'
+              : mode === 'login'
+                ? 'Login'
+                : t('signup.button', 'Sign Up')
+          }}
         </button>
       </form>
 
-      <p v-if="feedback" class="feedback">{{ feedback }}</p>
+      <p
+        v-if="feedback"
+        class="feedback"
+      >
+        {{ feedback }}
+      </p>
     </div>
   </section>
 </template>
+
 <style scoped>
 .auth-page {
   width: 100%;
@@ -167,12 +261,6 @@ h1 {
   gap: 0.8rem;
 }
 
-.name-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.7rem;
-}
-
 .auth-field {
   display: flex;
   flex-direction: column;
@@ -219,6 +307,11 @@ h1 {
   opacity: 0.96;
 }
 
+.submit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .feedback {
   margin: 0.8rem 0 0;
   color: var(--color-text);
@@ -228,10 +321,6 @@ h1 {
 @media (max-width: 560px) {
   .auth-page {
     padding: 0.75rem;
-  }
-
-  .name-grid {
-    grid-template-columns: 1fr;
   }
 }
 </style>

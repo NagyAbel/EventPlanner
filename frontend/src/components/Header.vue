@@ -2,9 +2,11 @@
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import profile from '@/assets/profile.svg'
+import { useAuthStore } from '@/stores/auth'
 
 const { t } = useI18n()
 const router = useRouter()
+const auth = useAuthStore()
 
 function goToProfile() {
    router.push('/profile')
@@ -24,7 +26,7 @@ function goToHome(){
             <div class = "right_holder">
                         <button class="profile_button" type="button" aria-label="Open user profile" @click="goToProfile">
                            <img class="profile_icon" :src="profile" alt="User profile">
-                            <p class="profile_name">Vendég</p>
+                            <p class="profile_name">{{ auth.user?.name  ?? "Vendeg"}}</p>
                         </button>
                         
 
