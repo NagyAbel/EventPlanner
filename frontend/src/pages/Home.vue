@@ -17,19 +17,23 @@ const event2 = {
   type: 'Festival',
   description: 'A vibrant celebratio',
 }
+
+const events = [
+  { id: 'home-event-1', ...event2 },
+  { id: 'home-event-2', ...event2 },
+  { id: 'home-event-3', ...event2 },
+  { id: 'home-event-4', ...event2 },
+  { id: 'home-event-5', ...event2 },
+  { id: 'home-event-6', ...event2 },
+  { id: 'home-event-7', ...event },
+  { id: 'home-event-8', ...event },
+]
 </script>
 
 <template>
   <Search></Search>
-  <div class = "event_holder">
-    <Event v-bind="event2" />
-    <Event v-bind="event2" />
-    <Event v-bind="event2" />
-    <Event v-bind="event2" />
-    <Event v-bind="event2" />
-    <Event v-bind="event2" />
-    <Event v-bind="event" />
-    <Event v-bind="event" />
+  <div class="event_holder">
+    <Event v-for="item in events" :key="item.id" v-bind="item" />
   </div>
 </template>
 
@@ -37,17 +41,20 @@ const event2 = {
 .event_holder {
   width: 100%;
   box-sizing: border-box;
-  padding-left: 50px;
-  padding-right:50px;
-  display:grid;
-  grid-template-columns: 1fr 1fr;
-
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(120px, 1fr));
+  column-gap: 8rem;
+  row-gap: 2.5rem;
 }
-@media screen and (max-width: 1500px) {
-  .event_holder{
-      grid-template-columns: 1fr;
-      padding: 0px;
-      gap: 5px;
+
+@media screen and (max-width: 900px) {
+  .event_holder {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    padding: 0 1rem;
   }
 }
 

@@ -1,9 +1,13 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRouter } from 'vue-router'
 
 const { t } = useI18n()
+const router = useRouter()
 
 interface EventCardProps {
+  id?: string
   name: string
   date: string
   location: string
@@ -29,10 +33,48 @@ const labels = {
   type: t('event.type', 'Típus'),
   description: t('event.description', 'Leírás'),
 }
+
+const eventId = computed(() => {
+  if (props.id && props.id.trim().length > 0) {
+    return props.id
+  }
+
+  return `${props.name}-${props.date}-${props.location}`
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+})
+
+function openEvent(editMode = false) {
+  const payload = {
+    id: eventId.value,
+    name: props.name,
+    date: props.date,
+    location: props.location,
+    image: props.image,
+    type: props.type,
+    description: props.description,
+  }
+
+  sessionStorage.setItem(`event:${eventId.value}`, JSON.stringify(payload))
+  router.push({
+    name: 'event-view',
+    params: { id: eventId.value },
+    query: editMode ? { edit: '1' } : {},
+  })
+}
 </script>
 
 <template>
-  <article class="event-card">
+  <article
+    class="event-card"
+    role="button"
+    tabindex="0"
+    :aria-label="`Open ${props.name} details`"
+    @click="openEvent(false)"
+    @keydown.enter.prevent="openEvent(false)"
+    @keydown.space.prevent="openEvent(false)"
+  >
     <div class="event-image-wrap">
       <img :src="props.image" :alt="props.name" class="event-image" />
     </div>
@@ -60,25 +102,47 @@ const labels = {
         <h3>{{ t('event.description', 'Leírás') }}</h3>
         <p>{{ props.description }}</p>
       </div>
+
+      <div class="event-actions">
+        <button
+          type="button"
+          class="event-action-btn ghost"
+          @click.stop="openEvent(true)"
+          @keydown.stop
+        >
+          Edit
+        </button>
+      </div>
     </div>
   </article>
 </template>
 
 <style scoped>
 .event-card {
-  margin:50px auto;
-  display: grid;
-  grid-template-columns: minmax(220px, 300px) minmax(0, 1fr);
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  overflow: hidden;
-  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.08);
-  width: 95%;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.9rem;
+  padding: 0.5rem;
+  color: var(--color-text);
+  box-sizing: border-box;
+  cursor: pointer;
+}
+
+.event-card:focus-visible {
+  outline: 2px solid rgba(20, 184, 166, 0.75);
+  outline-offset: 2px;
 }
 
 .event-image-wrap {
   position: relative;
-  min-height: 220px;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 0.7rem;
+  overflow: hidden;
   background: #f3f4f6;
 }
 
@@ -90,10 +154,10 @@ const labels = {
 }
 
 .event-content {
-  padding: 1.5rem;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 0.45rem;
+  padding: 0 0.1rem;
 }
 
 .event-header {
@@ -104,11 +168,11 @@ const labels = {
 .event-type {
   display: inline-flex;
   align-items: center;
-  padding: 0.45rem 0.8rem;
+  padding: 0.25rem 0.6rem;
   border-radius: 999px;
-  background: #eef2ff;
-  color: #4338ca;
-  font-size: 0.75rem;
+  background: rgba(20, 184, 166, 0.12);
+  color: var(--color-primary);
+  font-size: 0.62rem;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -116,79 +180,60 @@ const labels = {
 
 .event-title {
   margin: 0;
-  font-size: clamp(1.8rem, 3vw, 2.4rem);
-  line-height: 1.1;
-  color: #111827;
+  font-size: 1rem;
+  line-height: 1.3;
+  color: var(--color-text);
 }
 
 .event-meta {
   margin: 0;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
 }
 
 .meta-item {
   display: flex;
   flex-direction: column;
-  gap: 0.2rem;
-  padding: 0.8rem 0.9rem;
-  border-radius: 12px;
-  background: #f9fafb;
-  border: 1px solid #edf2f7;
+  gap: 0.1rem;
 }
 
 .meta-item dt {
-  font-size: 0.72rem;
+  font-size: 0.62rem;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: #6b7280;
+  color: var(--color-text-muted);
   font-weight: 700;
 }
 
 .meta-item dd {
   margin: 0;
-  color: #111827;
-  font-weight: 600;
+  color: var(--color-text);
+  font-weight: 500;
+  font-size: 0.8rem;
 }
 
 .event-description {
-  padding-top: 0.5rem;
-  border-top: 1px solid #e5e7eb;
+  display: none;
 }
 
-.event-description h3 {
-  margin: 0 0 0.5rem;
-  font-size: 0.85rem;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: #6b7280;
+.event-actions {
+  margin-top: 0.25rem;
+  display: flex;
+  gap: 0.45rem;
 }
 
-.event-description p {
-  margin: 0;
-  color: #374151;
-  line-height: 1.6;
+.event-action-btn {
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(20, 184, 166, 0.12);
+  color: var(--color-text);
+  border-radius: 0.55rem;
+  padding: 0.35rem 0.6rem;
+  font-size: 0.74rem;
+  cursor: pointer;
 }
 
-@media (max-width: 1000px) {
-  .event-card {
-    grid-template-columns: 1fr;
-    box-sizing: border-box;
-  }
-  .event-content {
-    padding: 1.25rem;
-  }
-
-  .event-meta {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media(max-width:500px){
-  .event-card{
-    width: 100%;
-  }
-
+.event-action-btn.ghost {
+  background: rgba(255, 255, 255, 0.06);
 }
 </style>

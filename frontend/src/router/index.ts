@@ -1,7 +1,8 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import Home from '@/pages/Home.vue'
 import UserAuth from '@/pages/UserAuth.vue'
-import UserSettings from '@/pages/UserSettings.vue'
+import Profile from '@/pages/Profile.vue'
+import EventView from '@/pages/EventView.vue'
 import NotFound from '@/pages/NotFound.vue'
 
 const router = createRouter({
@@ -17,7 +18,12 @@ const router = createRouter({
     },
     {
       path: '/profile',
-      component: UserSettings
+      component: Profile
+    },
+    {
+      path: '/events/:id',
+      name: 'event-view',
+      component: EventView,
     },
     {
      path: '/:pathMatch(.*)*',
