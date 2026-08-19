@@ -1,0 +1,22 @@
+:root {
+  --color-primary: #216869;
+  --color-secondary: #508991;
+
+  --color-background: #172a3a;
+  --color-surface: #09bc8a;
+
+  --color-text: #ffffff;
+  --color-text-muted: #64748b;
+
+  --color-border: #e2e8f0;
+
+  --color-success: #22c55e;
+  --color-danger: #ef4444;
+  --color-warning: #f59e0b;
+}
+
+body{
+    background-color: var(--color-background);
+    color: var(--color-text);
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}

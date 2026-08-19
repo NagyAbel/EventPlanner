@@ -1,0 +1,21 @@
+{
+  "signup": {
+    "title": "Sign Up",
+    "name": "Name",
+    "email": "Email",
+    "password": "Password",
+    "button": "Sign Up"
+  },
+
+  "header":{
+    "title":"Event Planner"
+  },
+  "search":{
+    "event":"Event",
+    "location": "Location",
+    "date":"Date",
+    "type":"Type",
+    "location_hint":"Where do you want to go?",
+    "search_hint":"Search events, speakers, or venues"
+  }
+}
