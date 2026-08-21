@@ -12,7 +12,13 @@ RUN apt-get update && apt-get install -y \
     libpng-dev \
     libjpeg62-turbo-dev \
     libfreetype6-dev \
-    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    libwebp-dev \
+    imagemagick \
+    libmagickwand-dev \
+    && docker-php-ext-configure gd \
+        --with-freetype \
+        --with-jpeg \
+        --with-webp \
     && docker-php-ext-install \
         pdo_mysql \
         mbstring \
@@ -21,6 +27,8 @@ RUN apt-get update && apt-get install -y \
         zip \
         bcmath \
         gd \
+    && pecl install imagick \
+    && docker-php-ext-enable imagick \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
@@ -32,10 +40,12 @@ RUN composer install \
     --prefer-dist \
     --optimize-autoloader
 
-RUN chown -R www-data:www-data \
-    storage \
-    bootstrap/cache
+COPY docker/entrypoint.sh /usr/local/bin/entrypoint
+
+RUN chmod +x /usr/local/bin/entrypoint
 
 EXPOSE 9000
+
+ENTRYPOINT ["entrypoint"]
 
 CMD ["php-fpm", "-F"]

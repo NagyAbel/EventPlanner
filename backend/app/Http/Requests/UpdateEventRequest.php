@@ -20,7 +20,12 @@ class UpdateEventRequest extends FormRequest
             'date' => ['sometimes', 'date'],
             'city' => ['sometimes', 'string', 'max:255'],
             'location' => ['sometimes', 'string', 'max:255'],
-            'cover_image' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'cover_image' => [
+                'sometimes',
+                'image',
+                'mimes:jpg,jpeg,png,webp',
+                'max:5120',
+            ],        
         ];
     }
 }

@@ -1,9 +1,16 @@
 <script setup>
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 import UserSettings from '@/components/UserSettings.vue'
 import UserEvents from '@/components/UserEvents.vue'
 
+const router = useRouter()
+
 const activeTab = ref('my-events')
+
+function createEvent() {
+  router.push('/events/create')
+}
 </script>
 
 <template>
@@ -14,7 +21,11 @@ const activeTab = ref('my-events')
 
     <main class="profile-content">
       <div class="content-header">
-        <div class="events-tabs" role="tablist" aria-label="Event sections">
+        <div
+          class="events-tabs"
+          role="tablist"
+          aria-label="Event sections"
+        >
           <button
             type="button"
             class="events-tab"
@@ -25,6 +36,7 @@ const activeTab = ref('my-events')
           >
             My Events
           </button>
+
           <button
             type="button"
             class="events-tab"
@@ -36,7 +48,17 @@ const activeTab = ref('my-events')
             Joined Events
           </button>
         </div>
+
+        <button
+          type="button"
+          class="create-button"
+          @click="createEvent"
+        >
+          <span class="create-icon">+</span>
+          Create Event
+        </button>
       </div>
+
       <UserEvents v-if="activeTab === 'my-events'" />
       <UserEvents v-else />
     </main>
@@ -63,6 +85,10 @@ const activeTab = ref('my-events')
 }
 
 .content-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
   margin-bottom: 0.8rem;
 }
 
@@ -85,6 +111,10 @@ const activeTab = ref('my-events')
   padding: 0.4rem 0.85rem;
   font-weight: 700;
   cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.15s ease;
 }
 
 .events-tab.active {
@@ -92,9 +122,69 @@ const activeTab = ref('my-events')
   background: rgba(20, 184, 166, 0.16);
 }
 
+.events-tab:hover:not(.active) {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* Create button */
+.create-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  min-height: 2.35rem;
+  padding: 0.45rem 0.9rem;
+
+  border: 1px solid rgba(20, 184, 166, 0.7);
+  border-radius: 0.7rem;
+
+  background: rgba(20, 184, 166, 0.18);
+  color: var(--color-text);
+
+  font: inherit;
+  font-weight: 700;
+
+  cursor: pointer;
+
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.create-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 1.15rem;
+  height: 1.15rem;
+
+  border-radius: 50%;
+
+  background: rgba(20, 184, 166, 0.25);
+
+  color: var(--color-primary);
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.create-button:hover {
+  background: rgba(20, 184, 166, 0.28);
+  border-color: rgba(20, 184, 166, 0.95);
+  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.08);
+  transform: translateY(-1px);
+}
+
+.create-button:active {
+  transform: translateY(0);
+}
+
+.create-button:focus-visible,
 .events-tab:focus-visible {
   outline: 2px solid rgba(20, 184, 166, 0.75);
-  outline-offset: 1px;
+  outline-offset: 2px;
 }
 
 @media (max-width: 900px) {
@@ -102,12 +192,30 @@ const activeTab = ref('my-events')
     grid-template-columns: 1fr;
   }
 
+  .content-header {
+    align-items: stretch;
+  }
+
   .events-tabs {
-    width: 100%;
+    flex: 1;
   }
 
   .events-tab {
     flex: 1;
+  }
+}
+
+@media (max-width: 560px) {
+  .content-header {
+    flex-direction: column;
+  }
+
+  .events-tabs {
+    width: 100%;
+  }
+
+  .create-button {
+    width: 100%;
   }
 }
 </style>

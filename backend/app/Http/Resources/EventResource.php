@@ -1,0 +1,31 @@
+<?php
+
+namespace App\Http\Resources;
+
+use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\Storage;
+
+class EventResource extends JsonResource
+{
+    public function toArray(Request $request): array
+    {
+        return [
+            'id' => $this->id,
+            'name' => $this->name,
+            'description' => $this->description,
+            'type' => $this->type,
+            'date' => $this->date,
+            'city' => $this->city,
+            'location' => $this->location,
+
+            'cover_image' => $this->cover_image
+                ? Storage::disk('public')->url($this->cover_image)
+                : null,
+
+            'attendee_count' => $this->attendee_count,
+
+            'owner' => $this->whenLoaded('owner'),
+        ];
+    }
+}

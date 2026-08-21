@@ -20,7 +20,12 @@ class CreateEventRequest extends FormRequest
             'date' => ['required', 'date'],
             'city' => ['required', 'string', 'max:255'],
             'location' => ['required', 'string', 'max:255'],
-            'cover_image' => ['nullable', 'string', 'max:255'],
+            'cover_image' => [
+                'required',
+                'image',
+                'mimes:jpg,jpeg,png,webp',
+                'max:5120',
+            ],        
         ];
     }
 }

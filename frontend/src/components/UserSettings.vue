@@ -1,56 +1,3 @@
-<template>
-  <section class="user-settings">
-    <div v-if="auth.user" class="settings-header">
-      <div class="profile-avatar">
-        <img :src="profile" alt="User profile" />
-      </div>
-
-      <div class="profile-meta">
-        <p class="profile-kicker">Channel</p>
-        <h1>{{ auth.user.name }}</h1>
-      </div>
-    </div>
-
-    <div v-if="auth.user" class="profile-grid">
-      <label class="profile-field">
-        <span>Name</span>
-
-        <input
-          v-model="name"
-          type="text"
-          maxlength="40"
-          :disabled="savingName"
-          @keydown.enter="saveName"
-          @blur="saveName"
-        />
-
-        <small v-if="savingName" class="saving-text">
-          Saving...
-        </small>
-      </label>
-
-      <label class="profile-field profile-field--full">
-        <span>Email</span>
-
-        <input
-          :value="auth.user.email"
-          type="email"
-          disabled
-        />
-      </label>
-    </div>
-
-    <button
-      type="button"
-      class="logout-button"
-      :disabled="auth.loading"
-      @click="logout"
-    >
-      {{ auth.loading ? 'Logging out...' : 'Logout' }}
-    </button>
-  </section>
-</template>
-
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
@@ -113,6 +60,58 @@ async function logout() {
   }
 }
 </script>
+<template>
+  <section class="user-settings">
+    <div v-if="auth.user" class="settings-header">
+      <div class="profile-avatar">
+        <img :src="profile" alt="User profile" />
+      </div>
+
+      <div class="profile-meta">
+        <p class="profile-kicker">Channel</p>
+        <h1>{{ auth.user.name }}</h1>
+      </div>
+    </div>
+
+    <div v-if="auth.user" class="profile-grid">
+      <label class="profile-field">
+        <span>Name</span>
+
+        <input
+          v-model="name"
+          type="text"
+          maxlength="40"
+          :disabled="savingName"
+          @keydown.enter="saveName"
+          @blur="saveName"
+        />
+
+        <small v-if="savingName" class="saving-text">
+          Saving...
+        </small>
+      </label>
+
+      <label class="profile-field profile-field--full">
+        <span>Email</span>
+
+        <input
+          :value="auth.user.email"
+          type="email"
+          disabled
+        />
+      </label>
+    </div>
+
+    <button
+      type="button"
+      class="logout-button"
+      :disabled="auth.loading"
+      @click="logout"
+    >
+      {{ auth.loading ? 'Logging out...' : 'Logout' }}
+    </button>
+  </section>
+</template>
 <style scoped>
 .user-settings {
   box-sizing: border-box;

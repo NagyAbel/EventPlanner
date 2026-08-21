@@ -16,14 +16,18 @@ export async function apiRequest<T>(
   endpoint: string,
   options: RequestInit = {},
 ): Promise<T> {
+  const headers = new Headers(options.headers)
+
+  headers.set('Accept', 'application/json')
+
+  if (!(options.body instanceof FormData)) {
+    headers.set('Content-Type', 'application/json')
+  }
+
   const response = await fetch(endpoint, {
     ...options,
     credentials: 'include',
-    headers: {
-      Accept: 'application/json',
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
+    headers,
   })
 
   const data = await response.json().catch(() => null)

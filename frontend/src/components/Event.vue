@@ -7,25 +7,16 @@ const { t } = useI18n()
 const router = useRouter()
 
 interface EventCardProps {
-  id?: string
+  id: string | number
   name: string
   date: string
   location: string
-  image: string
+  cover_image: string
   type: string
   description: string
 }
 
-const props = withDefaults(defineProps<EventCardProps>(), {
-  name: 'Event Title',
-  date: '2026.01.15',
-  location: 'Budapest',
-  image:
-    'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=1200&q=80',
-  type: 'Koncert',
-  description:
-    'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer nec odio. Praesent libero.',
-})
+const props = defineProps<EventCardProps>()
 
 const labels = {
   date: t('event.date', 'Dátum'),
@@ -34,32 +25,42 @@ const labels = {
   description: t('event.description', 'Leírás'),
 }
 
-const eventId = computed(() => {
-  if (props.id && props.id.trim().length > 0) {
-    return props.id
-  }
-
-  return `${props.name}-${props.date}-${props.location}`
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '')
-})
+/**
+ * Always convert the backend ID to a string.
+ *
+ * Laravel may return an integer ID while Vue/router expects
+ * the route parameter to be a string.
+ */
+const eventId = computed(() => String(props.id))
 
 function openEvent(editMode = false) {
+  const id = eventId.value
+
+  if (!id || id === 'undefined' || id === 'null') {
+    console.error('Cannot open event: missing event ID', props)
+    return
+  }
+
   const payload = {
-    id: eventId.value,
+    id,
     name: props.name,
     date: props.date,
     location: props.location,
-    image: props.image,
+    cover_image: props.cover_image,
     type: props.type,
     description: props.description,
   }
 
-  sessionStorage.setItem(`event:${eventId.value}`, JSON.stringify(payload))
+  sessionStorage.setItem(
+    `event:${id}`,
+    JSON.stringify(payload),
+  )
+
   router.push({
     name: 'event-view',
-    params: { id: eventId.value },
+    params: {
+      id,
+    },
     query: editMode ? { edit: '1' } : {},
   })
 }
@@ -76,15 +77,23 @@ function openEvent(editMode = false) {
     @keydown.space.prevent="openEvent(false)"
   >
     <div class="event-image-wrap">
-      <img :src="props.image" :alt="props.name" class="event-image" />
+      <img
+        :src="props.cover_image"
+        :alt="props.name"
+        class="event-image"
+      />
     </div>
 
     <div class="event-content">
       <div class="event-header">
-        <span class="event-type">{{ props.type }}</span>
+        <span class="event-type">
+          {{ props.type }}
+        </span>
       </div>
 
-      <h2 class="event-title">{{ props.name }}</h2>
+      <h2 class="event-title">
+        {{ props.name }}
+      </h2>
 
       <dl class="event-meta">
         <div class="meta-item">
@@ -99,19 +108,13 @@ function openEvent(editMode = false) {
       </dl>
 
       <div class="event-description">
-        <h3>{{ t('event.description', 'Leírás') }}</h3>
-        <p>{{ props.description }}</p>
-      </div>
+        <h3>
+          {{ t('event.description', 'Leírás') }}
+        </h3>
 
-      <div class="event-actions">
-        <button
-          type="button"
-          class="event-action-btn ghost"
-          @click.stop="openEvent(true)"
-          @keydown.stop
-        >
-          Edit
-        </button>
+        <p>
+          {{ props.description }}
+        </p>
       </div>
     </div>
   </article>
@@ -120,6 +123,8 @@ function openEvent(editMode = false) {
 <style scoped>
 .event-card {
   width: 100%;
+  height: 100%;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 0.7rem;
@@ -130,6 +135,7 @@ function openEvent(editMode = false) {
   color: var(--color-text);
   box-sizing: border-box;
   cursor: pointer;
+  overflow: hidden;
 }
 
 .event-card:focus-visible {
@@ -141,6 +147,7 @@ function openEvent(editMode = false) {
   position: relative;
   width: 100%;
   aspect-ratio: 16 / 9;
+  flex-shrink: 0;
   border-radius: 0.7rem;
   overflow: hidden;
   background: #f3f4f6;
@@ -154,6 +161,8 @@ function openEvent(editMode = false) {
 }
 
 .event-content {
+  min-height: 0;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   gap: 0.45rem;
@@ -163,6 +172,7 @@ function openEvent(editMode = false) {
 .event-header {
   display: flex;
   justify-content: flex-start;
+  flex-shrink: 0;
 }
 
 .event-type {
@@ -183,6 +193,11 @@ function openEvent(editMode = false) {
   font-size: 1rem;
   line-height: 1.3;
   color: var(--color-text);
+
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .event-meta {
@@ -190,6 +205,7 @@ function openEvent(editMode = false) {
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
+  flex-shrink: 0;
 }
 
 .meta-item {
@@ -211,6 +227,9 @@ function openEvent(editMode = false) {
   color: var(--color-text);
   font-weight: 500;
   font-size: 0.8rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .event-description {
@@ -218,22 +237,9 @@ function openEvent(editMode = false) {
 }
 
 .event-actions {
-  margin-top: 0.25rem;
+  margin-top: auto;
   display: flex;
   gap: 0.45rem;
-}
-
-.event-action-btn {
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  background: rgba(20, 184, 166, 0.12);
-  color: var(--color-text);
-  border-radius: 0.55rem;
-  padding: 0.35rem 0.6rem;
-  font-size: 0.74rem;
-  cursor: pointer;
-}
-
-.event-action-btn.ghost {
-  background: rgba(255, 255, 255, 0.06);
+  flex-shrink: 0;
 }
 </style>
