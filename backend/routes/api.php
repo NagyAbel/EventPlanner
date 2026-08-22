@@ -24,12 +24,15 @@ Route::prefix('user')->controller(UserController::class)->group(function () {
 Route::prefix('event')->controller(EventController::class)->group(function () {
         Route::get('/show/{event}', 'show');
         Route::get('/list', 'list');
-        
+
         Route::middleware('auth:sanctum')->group(function () {
             Route::get('/own','own');
             Route::post('/create','create');
             Route::put('/update/{event}', 'update');
             Route::delete('/delete/{event}', 'delete');
+            Route::post('/attend/{event}', 'attend');
+            Route::get('/joined', 'joined'); 
+
 
     });
 });

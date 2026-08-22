@@ -19,6 +19,7 @@ const defaultEvent: EventModel = {
   description: '',
   public: true,
   invited_emails: [],
+  is_attending:false,
   owner: null,
 }
 
@@ -63,7 +64,7 @@ function load(event: EventModel) {
     type: event.type,
     description: event.description,
     public: Boolean(Number(event.public)),    
-  invited_emails: [...emails],
+    invited_emails: [...emails],
 
     // Existing image from backend
     image: event.cover_image,
@@ -97,7 +98,7 @@ function get(): CreateEventPayload {
     type: formData.type,
     description: formData.description,
     public: formData.public,
-    invited_emails: [...formData.invited_emails],
+    invited_emails: Array.isArray(formData.invited_emails) ? formData.invited_emails : [],
     cover_image: formData.imageFile,
   }
 }
@@ -114,7 +115,7 @@ function getUpdatePayload(): UpdateEventPayload {
     type: formData.type,
     description: formData.description,
     public: formData.public,
-    invited_emails: [...formData.invited_emails],
+    invited_emails: Array.isArray(formData.invited_emails) ? formData.invited_emails : [],
     cover_image: formData.imageFile,
   }
 }
@@ -166,6 +167,8 @@ function removeImage(e?: Event) {
  * Add an invited email.
  */
 function addInviteEmail() {
+  if (formData.public) return
+
   const normalized = inviteEmail.value.trim().toLowerCase()
 
   inviteError.value = ''
@@ -195,6 +198,7 @@ function addInviteEmail() {
  * Remove an invited email.
  */
 function removeInviteEmail(email: string) {
+  if (formData.public) return
   formData.invited_emails = formData.invited_emails.filter(
     (entry) => entry !== email,
   )
@@ -341,8 +345,11 @@ defineExpose({
     </label>
 
     <!-- Invitations -->
-    <div class="invite-editor">
-      <span class="label-text">Invite Users by Email</span>
+    <div class="invite-editor" :class="{ 'is-disabled': formData.public }">
+      <span class="label-text">
+        Invite Users by Email
+        <span v-if="formData.public" class="disabled-hint">(Only available for Invite Only events)</span>
+      </span>
 
       <div class="invite-input-row">
         <input
@@ -350,15 +357,21 @@ defineExpose({
           type="email"
           maxlength="120"
           placeholder="name@example.com"
+          :disabled="formData.public"
           @keyup.enter.prevent="addInviteEmail"
         />
 
-        <button type="button" class="btn-add" @click="addInviteEmail">
+        <button
+          type="button"
+          class="btn-add"
+          :disabled="formData.public"
+          @click="addInviteEmail"
+        >
           Add
         </button>
       </div>
 
-      <p v-if="inviteError" class="field-error">{{ inviteError }}</p>
+      <p v-if="inviteError && !formData.public" class="field-error">{{ inviteError }}</p>
 
       <ul v-if="formData.invited_emails.length" class="invited-tags">
         <li
@@ -371,6 +384,7 @@ defineExpose({
             type="button"
             class="tag-remove"
             title="Remove email"
+            :disabled="formData.public"
             @click="removeInviteEmail(email)"
           >
             &times;
@@ -529,11 +543,24 @@ defineExpose({
   background: #222;
   color: #fff;
 }
+
 /* INVITATIONS & TAGS */
 .invite-editor {
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
+  transition: opacity 0.15s ease;
+}
+
+.invite-editor.is-disabled {
+  opacity: 0.5;
+}
+
+.disabled-hint {
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--color-text-muted, #9ca3af);
+  margin-left: 0.4rem;
 }
 
 .invite-input-row {
@@ -555,8 +582,13 @@ defineExpose({
   cursor: pointer;
 }
 
-.btn-add:hover {
+.btn-add:hover:not(:disabled) {
   background: rgba(255, 255, 255, 0.15);
+}
+
+.btn-add:disabled,
+.invite-input-row input:disabled {
+  cursor: not-allowed;
 }
 
 .invited-tags {
@@ -590,8 +622,12 @@ defineExpose({
   cursor: pointer;
 }
 
-.tag-remove:hover {
+.tag-remove:hover:not(:disabled) {
   color: #fda4af;
+}
+
+.tag-remove:disabled {
+  cursor: not-allowed;
 }
 
 .field-error {

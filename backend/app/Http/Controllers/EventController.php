@@ -17,19 +17,6 @@ use Illuminate\Support\Facades\DB;
 use App\Http\Requests\SearchEventRequest;
 class EventController extends Controller
 {
-    public function own(Request $request)
-    {
-        $perPage = min((int) $request->input('per_page', 20),100);
-
-        $events = Event::with('owner')
-            ->where('user_id', $request->user()->id)
-            ->orderByDesc('date')
-            ->orderByDesc('id')
-            ->paginate($perPage);
-
-        return EventResource::collection($events);  
-    }
-
     public function list(SearchEventRequest $request)
     {
         $perPage = min((int) $request->input('per_page', 10), 100);
@@ -64,7 +51,44 @@ class EventController extends Controller
             ]);    
     }
 
-    
+    public function own(Request $request)
+    {
+        $perPage = min((int) $request->input('per_page', 10), 100);
+
+        $events = Event::with(['owner', 'attendees'])
+            ->where('user_id', $request->user()->id)
+            ->orderByDesc('date')
+            ->orderByDesc('id')
+            ->paginate($perPage);
+
+        return response()->json([
+            'data'         => EventResource::collection($events->items()),
+            'current_page' => $events->currentPage(),
+            'last_page'    => $events->lastPage(),
+            'per_page'     => $events->perPage(),
+            'total'        => $events->total(),
+        ]);
+    }
+
+    public function joined(Request $request){
+        $perPage = min((int) $request->input('per_page', 20), 100);
+
+        $events = Event::with(['owner', 'attendees'])
+        ->whereHas('attendees', function ($query) use ($request) {
+            $query->where('user_id', $request->user()->id);
+        })
+        ->orderByDesc('date')
+        ->orderByDesc('id')
+        ->paginate($perPage);
+
+        return response()->json([
+            'data'         => EventResource::collection($events->items()),
+            'current_page' => $events->currentPage(),
+            'last_page'    => $events->lastPage(),
+            'per_page'     => $events->perPage(),
+            'total'        => $events->total(),
+        ]);
+    }
 
     public function show(Event $event){
         $event->load('owner','attendees');
@@ -101,7 +125,7 @@ class EventController extends Controller
             ->events()
             ->create($data);
 
-        return new EventResource($event->load('owner','attendees'));
+        return new EventResource($event->load('owner','invites'));
     }
 
     public function update(UpdateEventRequest $request, Event $event)
@@ -162,6 +186,38 @@ class EventController extends Controller
 
         return response()->json([
             'message' => 'Event deleted successfully.',
+        ]);
+    }
+
+    public function attend(Request $request, Event $event){
+        $user = $request->user();
+
+        if ((int) $event->user_id === (int) $user->id) {
+            return response()->json(['message' => 'You are the creator of this event.',], 422);
+        }
+
+        if (!$event->public) {
+            $event->loadMissing('invites');
+
+            $isInvited = $event->invites->contains(function ($attendee) use ($user) {
+                return $attendee->id === $user->id;
+            });
+
+            if (!$isInvited) {
+                return response()->json([
+                    'message' => 'You are not invited to this event.',
+                ], 403);
+            }
+        }
+
+        $changes = $event->attendees()->toggle($user->id);
+    
+        $isAttending = count($changes['attached']) > 0;
+
+        return response()->json([
+            'message' => $isAttending ? 'Successfully joined the event.' : 'Successfully left the event.',
+            'attending' => $isAttending,
+            'event' => new EventResource($event->load(['owner', 'attendees'])),
         ]);
     }
 }

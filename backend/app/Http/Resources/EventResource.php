@@ -10,6 +10,7 @@ class EventResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
+        $user = $request->user();
         return [
             'id'             => $this->id,
             'name'           => $this->name,
@@ -23,9 +24,13 @@ class EventResource extends JsonResource
                 ? Storage::disk('public')->url($this->cover_image)
                 : null,
             'attendee_count' => $this->attendee_count,
-            'invited_emails' => $this->whenLoaded('attendees', function () {
+            'invited_emails' => $this->whenLoaded('invite_users', function () {
                 return $this->attendees->pluck('email');
             }),
+
+            'is_attending'   => $user && $this->relationLoaded('attendees') 
+                ? $this->attendees->contains('id', $user->id) 
+                : false,
             'owner'=> $this->whenLoaded('owner', function () {
                 return [
                     'id'=>$this->owner->id,

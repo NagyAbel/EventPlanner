@@ -2,7 +2,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import UserSettings from '@/components/UserSettings.vue'
-import UserEvents from '@/components/UserEvents.vue'
+import ProfileEvents from '@/components/ProfileEvents.vue'
 
 const router = useRouter()
 
@@ -59,13 +59,14 @@ function createEvent() {
         </button>
       </div>
 
-      <UserEvents v-if="activeTab === 'my-events'" />
-      <UserEvents v-else />
+      <!-- Pass activeTab into UserEvents -->
+      <ProfileEvents :tab="activeTab" />
     </main>
   </div>
 </template>
 
 <style scoped>
+/* Unchanged CSS */
 .profile-page {
   display: grid;
   grid-template-columns: 280px minmax(0, 1fr);
@@ -126,7 +127,6 @@ function createEvent() {
   background: rgba(255, 255, 255, 0.05);
 }
 
-/* Create button */
 .create-button {
   display: inline-flex;
   align-items: center;
@@ -134,18 +134,13 @@ function createEvent() {
   gap: 0.45rem;
   min-height: 2.35rem;
   padding: 0.45rem 0.9rem;
-
   border: 1px solid rgba(20, 184, 166, 0.7);
   border-radius: 0.7rem;
-
   background: rgba(20, 184, 166, 0.18);
   color: var(--color-text);
-
   font: inherit;
   font-weight: 700;
-
   cursor: pointer;
-
   transition:
     background 0.15s ease,
     border-color 0.15s ease,
@@ -157,14 +152,10 @@ function createEvent() {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-
   width: 1.15rem;
   height: 1.15rem;
-
   border-radius: 50%;
-
   background: rgba(20, 184, 166, 0.25);
-
   color: var(--color-primary);
   font-size: 1rem;
   line-height: 1;

@@ -56,6 +56,12 @@ const buttonText = computed(() => {
   return 'Edit'
 })
 
+// Dynamic text for non-owner action button based on attendance
+const attendButtonText = computed(() => {
+  if (isJoining.value) return 'Updating...'
+  return event.value?.is_attending ? 'Leave Event' : 'Join Event'
+})
+
 onMounted(async () => {
   if (isCreateMode.value) {
     isLoading.value = false
@@ -174,8 +180,8 @@ async function handleJoin() {
     await eventStore.joinEvent(eventId.value)
     event.value = await eventStore.fetchEvent(eventId.value)
   } catch (error) {
-    console.error('Failed to join event:', error)
-    errorMessage.value = 'Failed to join event.'
+    console.error('Failed to update event attendance:', error)
+    errorMessage.value = 'Failed to update attendance status.'
   } finally {
     isJoining.value = false
   }
@@ -228,11 +234,12 @@ async function handleJoin() {
         <template v-else>
           <button
             type="button"
-            class="action-btn primary"
+            class="action-btn"
+            :class="event?.is_attending ? 'secondary-danger' : 'primary'"
             :disabled="isJoining"
             @click="handleJoin"
           >
-            {{ isJoining ? 'Joining...' : 'Join Event' }}
+            {{ attendButtonText }}
           </button>
         </template>
       </div>
@@ -242,7 +249,7 @@ async function handleJoin() {
       {{ errorMessage }}
     </div>
 
-    <!-- MAIN CONTENT CONTAINER (FLAT DESIGN, NO TRIPLE BORDERS) -->
+    <!-- MAIN CONTENT CONTAINER -->
     <div class="event-content">
       <div v-if="isLoading" class="loading-state">Loading event...</div>
 
@@ -318,6 +325,12 @@ async function handleJoin() {
   background: rgba(255, 255, 255, 0.08);
 }
 
+.action-btn.secondary-danger {
+  background: rgba(244, 63, 94, 0.15);
+  border: 1px solid rgba(244, 63, 94, 0.3);
+  color: #fda4af;
+}
+
 .action-btn.danger {
   background: rgba(244, 63, 94, 0.15);
   color: #fda4af;
@@ -331,8 +344,6 @@ async function handleJoin() {
   opacity: 0.4;
   cursor: not-allowed;
 }
-
-/* FLAT LAYOUT: Removed double/triple stacked borders */
 
 .loading-state {
   min-height: 300px;
@@ -351,7 +362,6 @@ async function handleJoin() {
 }
 
 @media (max-width: 700px) {
- 
   .header-actions {
     width: 100%;
   }

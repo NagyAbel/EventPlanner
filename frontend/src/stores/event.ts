@@ -13,6 +13,7 @@ export interface EventModel {
   user_id:number
   description: string
   public: boolean
+  is_attending: boolean
   invited_emails: string[]
   owner:User | null
 }
@@ -44,7 +45,11 @@ interface EventResponse {
   data: EventModel
   message?: string
 }
-
+export interface AttendEventResponse {
+  message: string
+  attending: boolean
+  event: EventModel
+}
 export interface FetchEventsOptions {
   page?: number
   search?: string
@@ -54,6 +59,8 @@ export interface FetchEventsOptions {
 }
 export const useEventStore = defineStore('event', () => {
   const userEvents = ref<EventModel[]>([])
+  const joinedEvents = ref<EventModel[]>([])
+
   const events = ref<EventModel[]>([])
 
   const currentEvent = ref<EventModel | null>(null)
@@ -72,12 +79,7 @@ export const useEventStore = defineStore('event', () => {
 
       const pageEvents = response.data
 
-      if (page === 1) {
-        userEvents.value = pageEvents
-      } else {
-        userEvents.value.push(...pageEvents)
-      }
-
+      userEvents.value = pageEvents
     return response
     } catch (err) {
       error.value =
@@ -87,6 +89,29 @@ export const useEventStore = defineStore('event', () => {
 
       throw err
    } finally {
+      loading.value = false
+    }
+  }
+  async function fetchJoinedEvents(page = 1) {
+    loading.value = true
+    error.value = null
+
+    try {
+      const response = await authRequest<EventsResponse>(
+        `/api/event/joined?page=${page}`
+     )
+
+      const pageEvents = response.data
+
+      // Directly assign page events to support page-based navigation
+      joinedEvents.value = pageEvents
+
+      return response
+    } catch (err) {
+      error.value = err instanceof Error? err.message : 'Failed to load joined events.'
+
+      throw err
+    } finally {
       loading.value = false
     }
   }
@@ -149,10 +174,8 @@ export const useEventStore = defineStore('event', () => {
   async function createEvent(payload: CreateEventPayload) {
     loading.value = true
     error.value = null
-
     try {
         const formData = new FormData()
-
         formData.append('name', payload.name)
         formData.append('date', payload.date)
         formData.append('location', payload.location)
@@ -192,86 +215,45 @@ export const useEventStore = defineStore('event', () => {
         loading.value = false
     }
   }
-  async function updateEvent(id: number,payload: UpdateEventPayload,) {
+  async function updateEvent(id: number, payload: UpdateEventPayload) {
     loading.value = true
     error.value = null
 
-   try {
+    try {
       const formData = new FormData()
       formData.append('_method', 'PUT')
 
-      if (payload.name !== undefined) {
-        formData.append('name', payload.name)
-      }
+      Object.entries(payload).forEach(([key, value]) => {
+        if (value === undefined || value === null) return
+        if (key === 'invited_emails' && Array.isArray(value)) {
+          value.forEach((email) => formData.append('invited_emails[]', email))
+        } else if (typeof value === 'boolean') {
+          formData.append(key, value ? '1' : '0')
+        } else {
+          formData.append(key, value as string | Blob)
+        }
+      })
 
-      if (payload.date !== undefined) {
-        formData.append('date', payload.date)
-      }
-
-      if (payload.city !== undefined) {
-        formData.append('city', payload.city)
-      }
-
-      if (payload.location !== undefined) {
-        formData.append('location', payload.location)
-      }
-
-      if (payload.type !== undefined) {
-        formData.append('type', payload.type)
-      }
-
-      if (payload.description !== undefined) {
-        formData.append('description', payload.description)
-      }
-
-      if (payload.public !== undefined) {
-        formData.append('public', payload.public ? '1' : '0')
-      }
-
-      if (payload.cover_image instanceof File) {
-        formData.append('cover_image', payload.cover_image)
-      }
-
-      if (payload.invited_emails !== undefined) {
-        payload.invited_emails.forEach((email) => {
-          formData.append('invited_emails[]', email)
-        })
-      }
-
-      const response = await authRequest<EventResponse>(
-        `/api/event/update/${id}`,
-        {
-          method: 'POST',
-          body: formData,
-        },
-      )
+      const response = await authRequest<EventResponse>(`/api/event/update/${id}`, {
+        method: 'POST',
+        body: formData,
+      })
 
       const event = response.data
 
-      const index = events.value.findIndex(
-        (item) => Number(item.id) === id,
-      )
-
-      if (index !== -1) {
-        events.value[index] = event
-      }
-
-      if (Number(currentEvent.value?.id) === id) {
-        currentEvent.value = event
-      }
+      const index = events.value.findIndex((item) => Number(item.id) === id)
+      if (index !== -1) events.value[index] = event
+      if (Number(currentEvent.value?.id) === id) currentEvent.value = event
 
       return event
     } catch (err) {
-      error.value =
-        err instanceof Error
-          ? err.message
-          : 'Failed to update event.'
-
+      error.value = err instanceof Error ? err.message : 'Failed to update event.'
       throw err
     } finally {
       loading.value = false
     }
-  }
+  }  
+
   async function deleteEvent(id: number) {
     loading.value = true
     error.value = null
@@ -304,6 +286,46 @@ export const useEventStore = defineStore('event', () => {
     }
   }
 
+  async function joinEvent(id: number) {
+    loading.value = true
+    error.value = null
+
+    try {
+      const response = await authRequest<AttendEventResponse>(
+        `/api/event/attend/${id}`,{method: 'POST',},
+      )
+
+      const updatedEvent = response.event
+
+      const index = events.value.findIndex((item) => Number(item.id) === id)
+      if (index !== -1) {
+        events.value[index] = updatedEvent
+      }
+
+      if (Number(currentEvent.value?.id) === id) {
+        currentEvent.value = updatedEvent
+      }
+
+      const joinedEventIndex = joinedEvents.value.findIndex((item) => Number(item.id) === id)
+      if (response.attending) {
+        if (joinedEventIndex === -1) {
+          joinedEvents.value.push(updatedEvent)
+        } else {
+          joinedEvents.value[joinedEventIndex] = updatedEvent
+        }
+      } else if (joinedEventIndex !== -1) {
+        joinedEvents.value.splice(joinedEventIndex, 1)
+      }
+
+      return response
+    } catch (err) {
+      error.value =
+        err instanceof Error ? err.message : 'Failed to update attendance status.'
+        throw err
+    } finally {
+      loading.value = false
+    }
+  }
   function clearError() {
     error.value = null
   }
@@ -313,17 +335,20 @@ export const useEventStore = defineStore('event', () => {
   }
 
   return {
+    joinedEvents,
     userEvents,
     events,
     currentEvent,
     loading,
     error,
     fetchUserEvents,
+    fetchJoinedEvents,
     fetchEvents,
     fetchEvent,
     createEvent,
     updateEvent,
     deleteEvent,
+    joinEvent,
 
     clearError,
     clearCurrentEvent,
