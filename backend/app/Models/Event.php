@@ -17,6 +17,7 @@ class Event extends Model
         'location',
         'cover_image',
         'attendee_count',
+        'public',
     ];
 
     protected function casts(): array

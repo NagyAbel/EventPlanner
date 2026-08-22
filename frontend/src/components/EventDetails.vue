@@ -1,221 +1,138 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import type { EventModel } from '@/stores/event'
 
 const props = defineProps<{
   event: EventModel
 }>()
 
+const MAX_DISPLAY_GUESTS = 3
+
+const visibleGuests = computed(() => {
+  return props.event.invited_emails?.slice(0, MAX_DISPLAY_GUESTS) || []
+})
+
+const remainingGuestsCount = computed(() => {
+  const total = props.event.invited_emails?.length || 0
+  return Math.max(0, total - MAX_DISPLAY_GUESTS)
+})
+
 const formattedDate = (date: string) => {
   if (!date) return 'No date set'
-
   return new Intl.DateTimeFormat('en-US', {
-    weekday: 'long',
+    weekday: 'short',
     year: 'numeric',
-    month: 'long',
+    month: 'short',
     day: 'numeric',
   }).format(new Date(date))
 }
 
 const formattedTime = (date: string) => {
   if (!date) return ''
-
   return new Intl.DateTimeFormat('en-US', {
     hour: 'numeric',
     minute: '2-digit',
   }).format(new Date(date))
 }
 
-const visibilityLabel = (visibility: EventModel['visibility']) => {
-  return visibility === 'invite-only'
-    ? 'Invite Only'
-    : 'Public'
+const visibilityLabel = (isPublic: EventModel['public']) => {
+  return isPublic ? 'Public' : 'Invite Only'
 }
 </script>
 
 <template>
   <article class="event-details">
-    <!-- Hero image -->
-    <div
-      v-if="props.event.cover_image"
-      class="event-hero"
-    >
+    <!-- Hero section with overlay visibility badge -->
+    <div :class="['event-hero', { 'event-hero-empty': !props.event.cover_image }]">
       <img
+        v-if="props.event.cover_image"
         :src="props.event.cover_image"
         :alt="props.event.name"
       />
 
+      <!-- Top-right absolute visibility badge -->
+      <span
+        class="visibility-badge"
+        :class="{ 'is-private': !props.event.public }"
+      >
+        <span class="status-dot" />
+        {{ visibilityLabel(props.event.public) }}
+      </span>
+
       <div class="hero-overlay">
-        <span class="event-type">
-          {{ props.event.type }}
-        </span>
-
-        <h2>
-          {{ props.event.name }}
-        </h2>
-      </div>
-    </div>
-
-    <!-- No image -->
-    <div
-      v-else
-      class="event-hero event-hero-empty"
-    >
-      <div>
-        <span class="event-type">
-          {{ props.event.type }}
-        </span>
-
-        <h2>
-          {{ props.event.name }}
-        </h2>
+        <span class="event-type">{{ props.event.type }}</span>
+        <h2>{{ props.event.name }}</h2>
       </div>
     </div>
 
     <div class="event-content">
       <!-- Main information -->
       <div class="event-main">
-        <div class="event-section">
-          <div class="section-heading">
-            <span class="section-icon">📅</span>
+        <div class="event-row">
+          <div class="event-section">
+            <div class="section-heading">
+              <span class="section-icon">📅</span>
+              <div>
+                <p class="section-label">Date & Time</p>
+                <p class="section-value">{{ formattedDate(props.event.date) }}</p>
+                <p class="section-secondary">{{ formattedTime(props.event.date) }}</p>
+              </div>
+            </div>
+          </div>
 
-            <div>
-              <p class="section-label">
-                Date & Time
-              </p>
-
-              <p class="section-value">
-                {{ formattedDate(props.event.date) }}
-              </p>
-
-              <p class="section-secondary">
-                {{ formattedTime(props.event.date) }}
-              </p>
+          <div class="event-section">
+            <div class="section-heading">
+              <span class="section-icon">📍</span>
+              <div>
+                <p class="section-label">Location</p>
+                <p class="section-value">{{ props.event.location }}</p>
+                <p class="section-secondary">{{ props.event.city }}</p>
+              </div>
             </div>
           </div>
         </div>
 
-        <div class="event-section">
-          <div class="section-heading">
-            <span class="section-icon">📍</span>
-
-            <div>
-              <p class="section-label">
-                Location
-              </p>
-
-              <p class="section-value">
-                {{ props.event.location }}
-              </p>
-
-              <p class="section-secondary">
-                {{ props.event.city }}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <!-- Description -->
-        <section
-          v-if="props.event.description"
-          class="description-section"
-        >
-          <p class="section-label">
-            About this event
-          </p>
-
-          <p class="description">
-            {{ props.event.description }}
-          </p>
+        <section v-if="props.event.description" class="description-section">
+          <p class="section-label">About this event</p>
+          <p class="description">{{ props.event.description }}</p>
         </section>
       </div>
 
       <!-- Sidebar -->
       <aside class="event-sidebar">
-        <!-- Event status -->
-        <div class="info-card">
-          <p class="section-label">
-            Visibility
-          </p>
-
-          <span
-            class="visibility-badge"
-            :class="{
-              'is-private':
-                props.event.visibility === 'invite-only',
-            }"
-          >
-            <span class="status-dot" />
-            {{ visibilityLabel(props.event.visibility) }}
-          </span>
-        </div>
-
         <!-- Owner -->
-        <div
-          v-if="props.event.owner"
-          class="info-card"
-        >
-          <p class="section-label">
-            Organized by
-          </p>
-
+        <div v-if="props.event.owner" class="info-card">
+          <p class="section-label">Organized by</p>
           <div class="owner">
             <div class="owner-avatar">
               {{ props.event.owner.name?.charAt(0).toUpperCase() }}
             </div>
-
             <div>
-              <p class="owner-name">
-                {{ props.event.owner.name }}
-              </p>
-
-              <p class="owner-email">
-                {{ props.event.owner.email }}
-              </p>
+              <p class="owner-name">{{ props.event.owner.name }}</p>
+              <p class="owner-email">{{ props.event.owner.email }}</p>
             </div>
           </div>
         </div>
 
-        <!-- Invitations -->
-        <div
-          v-if="
-            props.event.visibility === 'invite-only'
-          "
-          class="info-card"
-        >
+        <!-- Truncated Guest List -->
+        <div v-if="!props.event.public" class="info-card">
           <div class="invite-heading">
-            <p class="section-label">
-              Invited guests
-            </p>
-
-            <span class="guest-count">
-              {{ props.event.invitedEmails?.length || 0 }}
-            </span>
+            <p class="section-label">Invited guests</p>
+            <span class="guest-count">{{ props.event.invited_emails?.length || 0 }}</span>
           </div>
 
-          <ul
-            v-if="props.event.invitedEmails?.length"
-            class="guest-list"
-          >
-            <li
-              v-for="email in props.event.invitedEmails"
-              :key="email"
-            >
-              <span class="guest-avatar">
-                {{ email.charAt(0).toUpperCase() }}
-              </span>
+          <ul v-if="props.event.invited_emails?.length" class="guest-list">
+            <li v-for="email in visibleGuests" :key="email">
+              <span class="guest-avatar">{{ email.charAt(0).toUpperCase() }}</span>
+              <span class="guest-email">{{ email }}</span>
+            </li>
 
-              <span class="guest-email">
-                {{ email }}
-              </span>
+            <li v-if="remainingGuestsCount > 0" class="more-guests">
+              +{{ remainingGuestsCount }} more...
             </li>
           </ul>
 
-          <p
-            v-else
-            class="empty-guests"
-          >
-            No guests have been invited yet.
-          </p>
+          <p v-else class="empty-guests">No guests have been invited yet.</p>
         </div>
       </aside>
     </div>
@@ -231,7 +148,6 @@ const visibilityLabel = (visibility: EventModel['visibility']) => {
 }
 
 /* Hero */
-
 .event-hero {
   position: relative;
   width: 100%;
@@ -250,12 +166,7 @@ const visibilityLabel = (visibility: EventModel['visibility']) => {
 .event-hero::after {
   position: absolute;
   inset: 0;
-  background:
-    linear-gradient(
-      to top,
-      rgba(0, 0, 0, 0.8),
-      rgba(0, 0, 0, 0.08) 65%
-    );
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0.08) 65%);
   content: '';
 }
 
@@ -264,25 +175,52 @@ const visibilityLabel = (visibility: EventModel['visibility']) => {
   align-items: flex-end;
   padding: 2rem;
   box-sizing: border-box;
-  background:
-    radial-gradient(
-      circle at 20% 20%,
-      rgba(20, 184, 166, 0.2),
-      transparent 45%
-    ),
-    rgba(255, 255, 255, 0.04);
+  background: radial-gradient(circle at 20% 20%, rgba(20, 184, 166, 0.2), transparent 45%), rgba(255, 255, 255, 0.04);
 }
 
 .event-hero-empty::after {
   display: none;
 }
 
+/* Absolute Visibility Badge over image */
+.visibility-badge {
+  position: absolute;
+  top: 1.25rem;
+  right: 1.25rem;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.4rem 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(8px);
+  color: #ffffff;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.visibility-badge.is-private {
+  background: rgba(245, 158, 11, 0.2);
+  border-color: rgba(245, 158, 11, 0.4);
+}
+
+.status-dot {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background: #14b8a6;
+}
+
+.is-private .status-dot {
+  background: #f59e0b;
+}
+
 .hero-overlay {
   position: absolute;
   z-index: 1;
-  right: 0;
-  bottom: 0;
-  left: 0;
+  inset: auto 0 0 0;
   padding: 2rem;
 }
 
@@ -307,8 +245,7 @@ const visibilityLabel = (visibility: EventModel['visibility']) => {
   text-transform: uppercase;
 }
 
-/* Content */
-
+/* Content Layout */
 .event-content {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 300px;
@@ -320,13 +257,17 @@ const visibilityLabel = (visibility: EventModel['visibility']) => {
   min-width: 0;
 }
 
-.event-section {
-  padding: 1rem 0;
+/* Date & Location Grid Row */
+.event-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.5rem;
+  padding-bottom: 1.25rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.07);
 }
 
-.event-section:first-child {
-  padding-top: 0;
+.event-section {
+  min-width: 0;
 }
 
 .section-heading {
@@ -359,8 +300,11 @@ const visibilityLabel = (visibility: EventModel['visibility']) => {
 .section-value {
   margin: 0;
   color: var(--color-text);
-  font-size: 1rem;
+  font-size: 0.95rem;
   font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .section-secondary {
@@ -370,9 +314,8 @@ const visibilityLabel = (visibility: EventModel['visibility']) => {
 }
 
 /* Description */
-
 .description-section {
-  padding-top: 1.4rem;
+  padding-top: 1.25rem;
 }
 
 .description {
@@ -384,7 +327,6 @@ const visibilityLabel = (visibility: EventModel['visibility']) => {
 }
 
 /* Sidebar */
-
 .event-sidebar {
   display: flex;
   flex-direction: column;
@@ -398,36 +340,7 @@ const visibilityLabel = (visibility: EventModel['visibility']) => {
   background: rgba(255, 255, 255, 0.025);
 }
 
-.visibility-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  margin-top: 0.25rem;
-  padding: 0.35rem 0.65rem;
-  border-radius: 999px;
-  background: rgba(20, 184, 166, 0.1);
-  color: var(--color-text);
-  font-size: 0.8rem;
-  font-weight: 600;
-}
-
-.visibility-badge.is-private {
-  background: rgba(245, 158, 11, 0.1);
-}
-
-.status-dot {
-  width: 0.45rem;
-  height: 0.45rem;
-  border-radius: 50%;
-  background: #14b8a6;
-}
-
-.is-private .status-dot {
-  background: #f59e0b;
-}
-
 /* Owner */
-
 .owner {
   display: flex;
   align-items: center;
@@ -465,8 +378,7 @@ const visibilityLabel = (visibility: EventModel['visibility']) => {
   font-size: 0.72rem;
 }
 
-/* Invitations */
-
+/* Guest List */
 .invite-heading {
   display: flex;
   align-items: center;
@@ -480,7 +392,6 @@ const visibilityLabel = (visibility: EventModel['visibility']) => {
   min-width: 1.5rem;
   height: 1.5rem;
   padding: 0 0.35rem;
-  box-sizing: border-box;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.07);
   color: var(--color-text-muted);
@@ -517,6 +428,13 @@ const visibilityLabel = (visibility: EventModel['visibility']) => {
   white-space: nowrap;
 }
 
+.more-guests {
+  padding-left: 2.25rem;
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  font-style: italic;
+}
+
 .empty-guests {
   margin: 0.6rem 0 0;
   color: var(--color-text-muted);
@@ -524,7 +442,6 @@ const visibilityLabel = (visibility: EventModel['visibility']) => {
 }
 
 /* Responsive */
-
 @media (max-width: 800px) {
   .event-content {
     grid-template-columns: 1fr;
@@ -533,6 +450,13 @@ const visibilityLabel = (visibility: EventModel['visibility']) => {
   .event-sidebar {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .event-row {
+    grid-template-columns: 1fr;
+    gap: 1rem;
   }
 }
 

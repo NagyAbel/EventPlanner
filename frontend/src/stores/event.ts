@@ -12,8 +12,8 @@ export interface EventModel {
   type: string
   user_id:number
   description: string
-  visibility: 'public' | 'invite-only'
-  invitedEmails: string[]
+  public: boolean
+  invited_emails: string[]
   owner:User | null
 }
 
@@ -25,10 +25,9 @@ export interface CreateEventPayload {
   cover_image: File | null
   type: string
   description: string
-  visibility: 'public' | 'invite-only'
-  invitedEmails: string[]
+  public:boolean
+  invited_emails: string[]
 }
-
 
 export type UpdateEventPayload = Partial<CreateEventPayload>
 export interface PaginatedEvents {
@@ -46,9 +45,17 @@ interface EventResponse {
   message?: string
 }
 
-
+export interface FetchEventsOptions {
+  page?: number
+  search?: string
+  city?: string
+  date?: string
+  per_page?: number
+}
 export const useEventStore = defineStore('event', () => {
+  const userEvents = ref<EventModel[]>([])
   const events = ref<EventModel[]>([])
+
   const currentEvent = ref<EventModel | null>(null)
 
   const loading = ref(false)
@@ -66,9 +73,9 @@ export const useEventStore = defineStore('event', () => {
       const pageEvents = response.data
 
       if (page === 1) {
-        events.value = pageEvents
+        userEvents.value = pageEvents
       } else {
-        events.value.push(...pageEvents)
+        userEvents.value.push(...pageEvents)
       }
 
     return response
@@ -83,7 +90,38 @@ export const useEventStore = defineStore('event', () => {
       loading.value = false
     }
   }
+  async function fetchEvents(options: FetchEventsOptions = {}) {
+    const { page = 1, search = '', city = '', date = '', per_page } = options
+    loading.value = true
+    error.value = null
 
+    try {
+      const params = new URLSearchParams()
+      params.append('page', page.toString())
+
+      if (search.trim()) params.append('search', search.trim())
+      if (city.trim()) params.append('city', city.trim())
+      if (date) params.append('date', date)
+      if (per_page) params.append('per_page', per_page.toString())
+
+      const response = await apiRequest<EventsResponse>(
+        `/api/event/list?${params.toString()}`
+      )
+
+      const pageEvents = response.data
+
+      
+      events.value = pageEvents
+      
+      return response
+    } catch (err) {
+        error.value = err instanceof Error? err.message: 'Failed to load events.'
+
+        throw err
+    } finally {
+      loading.value = false
+    }
+  }
   async function fetchEvent(id: number) {
     loading.value = true
     error.value = null
@@ -120,14 +158,14 @@ export const useEventStore = defineStore('event', () => {
         formData.append('location', payload.location)
         formData.append('type', payload.type)
         formData.append('description', payload.description)
-        formData.append('visibility', payload.visibility)
+        formData.append('public', payload.public ? '1' : '0')
         formData.append('city', payload.city)
         if (payload.cover_image) {
             formData.append('cover_image', payload.cover_image)
         }   
 
-        payload.invitedEmails.forEach((email) => {
-            formData.append('invitedEmails[]', email)
+        payload.invited_emails.forEach((email) => {
+            formData.append('invited_emails[]', email)
         })
 
         const response = await authRequest<EventResponse>(
@@ -186,17 +224,17 @@ export const useEventStore = defineStore('event', () => {
         formData.append('description', payload.description)
       }
 
-      if (payload.visibility !== undefined) {
-        formData.append('visibility', payload.visibility)
+      if (payload.public !== undefined) {
+        formData.append('public', payload.public ? '1' : '0')
       }
 
       if (payload.cover_image instanceof File) {
         formData.append('cover_image', payload.cover_image)
       }
 
-      if (payload.invitedEmails !== undefined) {
-        payload.invitedEmails.forEach((email) => {
-          formData.append('invitedEmails[]', email)
+      if (payload.invited_emails !== undefined) {
+        payload.invited_emails.forEach((email) => {
+          formData.append('invited_emails[]', email)
         })
       }
 
@@ -240,7 +278,7 @@ export const useEventStore = defineStore('event', () => {
 
     try {
       await authRequest<unknown>(
-        '/api/event/delete',
+        `/api/event/delete/${id}`,
         {
           method: 'DELETE',
           body: JSON.stringify({ id }),
@@ -275,12 +313,13 @@ export const useEventStore = defineStore('event', () => {
   }
 
   return {
+    userEvents,
     events,
     currentEvent,
     loading,
     error,
-
     fetchUserEvents,
+    fetchEvents,
     fetchEvent,
     createEvent,
     updateEvent,

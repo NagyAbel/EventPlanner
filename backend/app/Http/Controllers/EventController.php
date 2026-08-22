@@ -12,6 +12,9 @@ use Intervention\Image\ImageManager;
 use Intervention\Image\Drivers\Imagick\Driver;
 use Illuminate\Support\Str;
 use Intervention\Image\Format;
+use App\Models\User;
+use Illuminate\Support\Facades\DB;
+use App\Http\Requests\SearchEventRequest;
 class EventController extends Controller
 {
     public function own(Request $request)
@@ -27,43 +30,54 @@ class EventController extends Controller
         return EventResource::collection($events);  
     }
 
+    public function list(SearchEventRequest $request)
+    {
+        $perPage = min((int) $request->input('per_page', 10), 100);
+        $page = (int) $request->input('page', 1);
+        $events = Event::with('owner','attendees')
+            ->when($request->filled('search'), function ($query) use ($request) {
+                $search = $request->input('search');
+                $query->where(function ($q) use ($search) {
+                    $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('description', 'like', "%{$search}%");
+                });
+            })
+            ->when($request->filled('city'), function ($query) use ($request) {
+                $query->where('city', $request->input('city'));
+            })
+            ->when($request->filled('date'), function ($query) use ($request) {
+                $query->whereDate('date', $request->input('date'));
+            })
+            ->orderByDesc('date')
+            ->orderByDesc('id')
+            ->paginate(
+                perPage: $perPage,
+                pageName: 'page',
+                page: $page
+            );
+            return response()->json([
+                'data'         => EventResource::collection($events->items()),
+                'current_page' => $events->currentPage(),
+                'last_page'    => $events->lastPage(),
+                'per_page'     => $events->perPage(),
+                'total'        => $events->total(),
+            ]);    
+    }
+
+    
+
     public function show(Event $event){
-        $event->load('owner');
+        $event->load('owner','attendees');
 
         return new EventResource($event);
     }
 
-    public function store(CreateEventRequest $request)
+    public function create(CreateEventRequest $request)
     {
         $data = $request->validated();
 
         if ($request->hasFile('cover_image')) {
-            $data['cover_image'] = $request->file('cover_image')->store(
-                'events/covers',
-                'public'
-            );
-        }
-
-        $event = $request->user()
-            ->events()
-            ->create($data);
-
-        return response()->json([
-            'event' => $event->load('owner'),
-        ], 201);
-    }
-
-    public function update(UpdateEventRequest $request, Event $event)
-    {
-        abort_unless(
-            (int) $event->user_id === (int) $request->user()->id,
-            403
-        );
-
-        $data = $request->validated();
-
-        if ($request->hasFile('cover_image')) {
-            $oldImage = $event->cover_image;
+            $oldImage = $request->cover_image;
 
             $manager = ImageManager::usingDriver(Driver::class);
             //throw new \Exception('Debug error triggered in EventController::update');
@@ -78,19 +92,62 @@ class EventController extends Controller
 
             Storage::disk('public')->put($path, (string) $imageData);
             if ($oldImage) {
-                Storage::disk('public')->delete($event->cover_image);
+                Storage::disk('public')->delete($oldImage);
             }
             $data['cover_image'] = $path;        
         }
 
-        $event->update($data);
+        $event = $request->user()
+            ->events()
+            ->create($data);
 
-        $event->load('owner');
-
-        return new EventResource($event);
+        return new EventResource($event->load('owner','attendees'));
     }
 
-    public function destroy(Request $request, Event $event)
+    public function update(UpdateEventRequest $request, Event $event)
+    {
+        abort_unless((int) $event->user_id === (int) $request->user()->id,403);
+
+        $data = $request->validated();
+
+        return DB::transaction(function () use ($request, $event, $data) {
+            if ($request->hasFile('cover_image')) {
+            $oldImage = $event->cover_image;
+
+            $manager = ImageManager::usingDriver(Driver::class);
+            $image = $manager->decodePath($request->file('cover_image')->getRealPath());
+            $image->scaleDown(width: 1920, height: 1080);
+            $imageData = $image->encodeUsingFormat(Format::WEBP, quality: 65);
+            
+            $filename = Str::uuid() . '.webp';
+            $path = 'events/covers/' . $filename;
+
+            Storage::disk('public')->put($path, (string) $imageData);
+            
+            if ($oldImage) {
+                Storage::disk('public')->delete($oldImage);
+            }
+            
+            $data['cover_image'] = $path;
+            }
+
+            $event->update($data);
+
+            // Sync event invitations if present in request payload
+            if ($request->has('invited_emails')) {
+                $userIds = User::whereIn('email', $request->input('invited_emails', []))
+                    ->pluck('id');
+
+                $event->attendees()->sync($userIds);
+            }
+
+            $event->load(['owner', 'attendees']);
+
+            return new EventResource($event);
+        });
+    }
+
+    public function delete(Request $request, Event $event)
     {
         abort_unless(
             $event->user_id === $request->user()->id,

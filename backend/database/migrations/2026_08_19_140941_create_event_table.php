@@ -23,7 +23,7 @@ return new class extends Migration
 
             $table->string('city');
             $table->string('location');
-
+            $table->boolean('public');            
             $table->string('cover_image')->nullable();
 
             $table->timestamps();

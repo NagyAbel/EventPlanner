@@ -3,9 +3,26 @@ import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import arrow from '@/assets/up_arrow.svg'
 import search_icon from '@/assets/search_options.svg'
-
+import type { FetchEventsOptions } from '@/stores/event'
 const { t } = useI18n()
 const isSearchOpen = ref(true)
+const emit = defineEmits<{
+  (e: 'search', filters: FetchEventsOptions): void
+}>()
+const filters = ref({
+  city: '',
+  search: '',
+  date: '',
+})
+
+function emitSearch() {
+  emit('search', {
+    city: filters.value.city,
+    search: filters.value.search,
+    date: filters.value.date,
+  })
+}
+
 </script>
 
 <template>
@@ -14,17 +31,38 @@ const isSearchOpen = ref(true)
       <div class="search-bar" role="search" aria-label="Event search filters">
         <label class="field field--wide">
           <span class="field-label">{{ t('search.location') || 'Location' }}</span>
-          <input class="location_search" type="text" :placeholder="t('search.location_hint')" />
+          <input 
+            v-model="filters.city" 
+            @change="emitSearch"
+            @keyup.enter="emitSearch"            
+            class="location_search" 
+            type="text" 
+            :placeholder="t('search.location_hint')" 
+          />
         </label>
 
         <label class="field field--grow">
           <span class="field-label">{{ t('search.event') || 'Event' }}</span>
-          <input class="event_search" type="text" :placeholder="t('search.search_hint')" />
+          <input 
+            v-model="filters.search" 
+            @change="emitSearch"
+            @keyup.enter="emitSearch"            
+            class="event_search" 
+            type="text" 
+            :placeholder="t('search.search_hint')" 
+          />
         </label>
 
         <label class="field">
           <span class="field-label">{{ t('search.date') || 'Date' }}</span>
-          <input class="date_search" type="date" aria-label="Event date" />
+          <input 
+            v-model="filters.date" 
+            @change="emitSearch"
+            @keyup.enter="emitSearch"            
+            class="date_search" 
+            type="date" 
+            aria-label="Event date" 
+          />
         </label>
 
         <label class="field">
@@ -48,18 +86,8 @@ const isSearchOpen = ref(true)
         :title="isSearchOpen ? 'Hide search filters' : 'Show search filters'"
         @click="isSearchOpen = !isSearchOpen"
       >
-        <img
-          class="arrow"
-          :src="arrow"
-          :class="{ hidden: !isSearchOpen }"
-          alt=""
-        />
-        <img
-          class="search_option"
-          :src="search_icon"
-          :class="{ hidden: isSearchOpen }"
-          alt=""
-        />
+        <img class="arrow" :src="arrow" :class="{ hidden: !isSearchOpen }" alt="" />
+        <img class="search_option" :src="search_icon" :class="{ hidden: isSearchOpen }" alt="" />
       </button>
     </div>
   </div>

@@ -20,6 +20,7 @@ class CreateEventRequest extends FormRequest
             'date' => ['required', 'date'],
             'city' => ['required', 'string', 'max:255'],
             'location' => ['required', 'string', 'max:255'],
+            'public'=>['required','boolean'],
             'cover_image' => [
                 'required',
                 'image',

@@ -20,6 +20,14 @@ class UpdateEventRequest extends FormRequest
             'date' => ['sometimes', 'date'],
             'city' => ['sometimes', 'string', 'max:255'],
             'location' => ['sometimes', 'string', 'max:255'],
+            'public'=>['required','boolean'],
+            'invited_emails'   => ['required', 'array','max:100'],
+            'invited_emails.*' => [
+            'required',
+            'string',
+            'email',
+            'distinct',
+            'exists:users,email', ],            
             'cover_image' => [
                 'sometimes',
                 'image',

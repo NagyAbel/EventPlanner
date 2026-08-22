@@ -61,7 +61,7 @@ onUnmounted(() => {
   <section class="user_events">
     <div class="event_holder">
       <Event
-        v-for="event in eventStore.events"
+        v-for="event in eventStore.userEvents"
         :key="event.id"
         v-bind="event"
       />
@@ -73,14 +73,14 @@ onUnmounted(() => {
       </div>
 
       <div
-        v-else-if="!hasMore && eventStore.events.length"
+        v-else-if="!hasMore && eventStore.userEvents.length"
         class="end-message"
       >
         No more events.
       </div>
 
       <div
-        v-else-if="!eventStore.events.length && !loadingMore"
+        v-else-if="!eventStore.userEvents.length && !loadingMore"
         class="empty-message"
       >
         You haven't created any events yet.

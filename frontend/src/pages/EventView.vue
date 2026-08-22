@@ -1,19 +1,36 @@
 <script setup lang="ts">
-import { onMounted ,computed, ref,nextTick,watch } from 'vue'
+import { onMounted, computed, ref, nextTick, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import EventForm from '@/components/EventForm.vue'
 import type { EventModel } from '@/stores/event'
 import { useEventStore } from '@/stores/event'
+import { useAuthStore } from '@/stores/auth'
 import EventDetails from '@/components/EventDetails.vue'
+
 const router = useRouter()
 const route = useRoute()
 const eventStore = useEventStore()
+const authStore = useAuthStore()
 
 const eventForm = ref<InstanceType<typeof EventForm> | null>(null)
 
 const isEditMode = computed(() => route.query.edit === '1')
 const isCreateMode = computed(() => route.path.endsWith('/create'))
 const eventId = computed(() => Number(route.params.id))
+
+const event = ref<EventModel | null>(null)
+const isLoading = ref(!isCreateMode.value)
+const errorMessage = ref('')
+const isSaving = ref(false)
+const isDeleting = ref(false)
+const isJoining = ref(false)
+
+const isOwner = computed(() => {
+  if (isCreateMode.value) return true
+  if (!event.value || !authStore.user) return false
+  return Number(event.value.owner?.id) === Number(authStore.user.id)
+})
+
 const eyebrowText = computed(() => {
   if (isCreateMode.value) return 'New Event'
   if (isEditMode.value) return 'Updating Event'
@@ -39,42 +56,49 @@ const buttonText = computed(() => {
   return 'Edit'
 })
 
-const event = ref<EventModel | null>(null)
 onMounted(async () => {
   if (isCreateMode.value) {
+    isLoading.value = false
     return
   }
 
   if (!eventId.value) {
     errorMessage.value = 'Missing event ID.'
+    isLoading.value = false
     return
   }
 
-  try {
-    const fetchedEvent = await eventStore.fetchEvent(eventId.value);
-    event.value = fetchedEvent
-
-    if (isEditMode.value) {
-      await nextTick()
-      eventForm.value?.load(fetchedEvent)
+  const cachedEvent = sessionStorage.getItem(`event:${eventId.value}`)
+  if (cachedEvent) {
+    try {
+      event.value = JSON.parse(cachedEvent)
+    } catch (e) {
+      console.warn('Failed to parse cached event data', e)
     }
+  }
+
+  try {
+    const fetchedEvent = await eventStore.fetchEvent(eventId.value)
+    event.value = fetchedEvent
   } catch (error) {
     console.error('Failed to load event:', error)
-    errorMessage.value = 'Failed to load event.'
+    if (!event.value) {
+      errorMessage.value = 'Failed to load event.'
+    }
+  } finally {
+    isLoading.value = false
+    if (isEditMode.value && event.value) {
+      await nextTick()
+      eventForm.value?.load(event.value)
+    }
   }
 })
 
 watch(isEditMode, async (editing) => {
-  if (!editing || !event.value) {
-    return
-  }
-
+  if (!editing || !event.value) return
   await nextTick()
-
   eventForm.value?.load(event.value)
 })
-const errorMessage = ref('')
-const isSaving = ref(false)
 
 async function handleSubmit() {
   if (!isCreateMode.value && !isEditMode.value) {
@@ -94,14 +118,12 @@ async function handleSubmit() {
 
   try {
     if (isEditMode.value) {
-      // Call update API and clear query parameters back to view mode
-       const updatedEvent = await eventStore.updateEvent(eventId.value,formData)
-        event.value = updatedEvent
-
+      const updatedEvent = await eventStore.updateEvent(eventId.value, formData)
+      event.value = updatedEvent
       router.push({ path: `/events/${eventId.value}`, query: {} })
     } else {
-      // Call create API
       const createdEvent = await eventStore.createEvent(formData)
+      event.value = createdEvent
       router.push(`/events/${createdEvent.id}`)
     }
   } catch (error) {
@@ -121,88 +143,153 @@ function handleCancel() {
     router.back()
   }
 }
+
+async function handleDelete() {
+  if (!eventId.value) return
+
+  const confirmed = window.confirm('Are you sure you want to delete this event?')
+  if (!confirmed) return
+
+  isDeleting.value = true
+  errorMessage.value = ''
+
+  try {
+    await eventStore.deleteEvent(eventId.value)
+    router.back()  
+  } catch (error) {
+    console.error('Failed to delete event:', error)
+    errorMessage.value = 'Failed to delete event.'
+  } finally {
+    isDeleting.value = false
+  }
+}
+
+async function handleJoin() {
+  if (!eventId.value || isJoining.value) return
+
+  isJoining.value = true
+  errorMessage.value = ''
+
+  try {
+    await eventStore.joinEvent(eventId.value)
+    event.value = await eventStore.fetchEvent(eventId.value)
+  } catch (error) {
+    console.error('Failed to join event:', error)
+    errorMessage.value = 'Failed to join event.'
+  } finally {
+    isJoining.value = false
+  }
+}
 </script>
 
 <template>
-  <section class="create-event-page">
-    <header class="create-event-header">
-  <div>
-    <p class="eyebrow">{{ eyebrowText }}</p>
-    <h1>{{ titleText }}</h1>
-    <p class="subtitle">{{ subtitleText }}</p>
-  </div>
+  <section class="event-page">
+    <header class="event-header">
+      <div>
+        <p class="eyebrow">{{ eyebrowText }}</p>
+        <h1>{{ titleText }}</h1>
+        <p class="subtitle">{{ subtitleText }}</p>
+      </div>
 
-<div class="header-actions">
-  <button
-    v-if="isCreateMode || isEditMode"
-    type="button"
-    class="action-btn secondary"
-    :disabled="isSaving"
-    @click="handleCancel"
-  >
-    Cancel
-  </button>
+      <div class="header-actions" v-if="!isLoading">
+        <!-- OWNER ACTIONS -->
+        <template v-if="isOwner">
+          <button
+            v-if="!isCreateMode"
+            type="button"
+            class="action-btn danger"
+            :disabled="isSaving || isDeleting"
+            @click="handleDelete"
+          >
+            {{ isDeleting ? 'Deleting...' : 'Delete' }}
+          </button>
 
-  <button
-    type="button"
-    class="action-btn primary"
-    :disabled="isSaving"
-    @click="handleSubmit"
-  >
-    {{ buttonText }}
-  </button>
-</div></header>
-    <div
-      v-if="errorMessage"
-      class="error-message"
-    >
+          <button
+            v-if="isCreateMode || isEditMode"
+            type="button"
+            class="action-btn secondary"
+            :disabled="isSaving || isDeleting"
+            @click="handleCancel"
+          >
+            Cancel
+          </button>
+
+          <button
+            type="button"
+            class="action-btn primary"
+            :disabled="isSaving || isDeleting"
+            @click="handleSubmit"
+          >
+            {{ buttonText }}
+          </button>
+        </template>
+
+        <!-- NON-OWNER ACTIONS -->
+        <template v-else>
+          <button
+            type="button"
+            class="action-btn primary"
+            :disabled="isJoining"
+            @click="handleJoin"
+          >
+            {{ isJoining ? 'Joining...' : 'Join Event' }}
+          </button>
+        </template>
+      </div>
+    </header>
+
+    <div v-if="errorMessage" class="error-message">
       {{ errorMessage }}
     </div>
 
-    <article class="create-event-card">
-      <EventDetails v-if="!isCreateMode && !isEditMode && event" :event="event"/>
-      <EventForm v-else-if="isCreateMode || isEditMode" ref="eventForm" :editable="true"/>
+    <!-- MAIN CONTENT CONTAINER (FLAT DESIGN, NO TRIPLE BORDERS) -->
+    <div class="event-content">
+      <div v-if="isLoading" class="loading-state">Loading event...</div>
 
-      <div v-else class="loading-state">Loading event...</div>
-    </article>
+      <template v-else>
+        <EventDetails v-if="!isCreateMode && !isEditMode && event" :event="event" />
+        <EventForm v-else-if="isCreateMode || isEditMode" ref="eventForm" :editable="true" />
+      </template>
+    </div>
   </section>
 </template>
 
 <style scoped>
-.create-event-page {
+.event-page {
   width: min(100%, 1100px);
   margin: 0 auto;
-  padding: 1.25rem 1.25rem 2rem;
+  padding: 1.5rem 1.5rem 3rem;
   box-sizing: border-box;
   color: var(--color-text);
 }
 
-.create-event-header {
+.event-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
   gap: 1.5rem;
-  margin-bottom: 1rem;
+  margin-bottom: 2rem;
 }
 
 .eyebrow {
   margin: 0 0 0.25rem;
-  color: var(--color-primary);
-  font-size: 0.72rem;
+  color: var(--color-primary, #14b8a6);
+  font-size: 0.75rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
 
-.create-event-header h1 {
+.event-header h1 {
   margin: 0;
-  font-size: 1.55rem;
+  font-size: 1.75rem;
+  font-weight: 700;
 }
 
 .subtitle {
   margin: 0.35rem 0 0;
-  color: var(--color-text-muted);
-  font-size: 0.9rem;
+  color: var(--color-text-muted, #9ca3af);
+  font-size: 0.95rem;
 }
 
 .header-actions {
@@ -212,14 +299,41 @@ function handleCancel() {
 }
 
 .action-btn {
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 0.7rem;
-  padding: 0.55rem 0.95rem;
+  border: none;
+  border-radius: 0.6rem;
+  padding: 0.6rem 1.1rem;
   color: var(--color-text);
   cursor: pointer;
   font: inherit;
   font-weight: 600;
+  transition: opacity 0.15s ease, background-color 0.15s ease;
 }
+
+.action-btn.primary {
+  background: var(--color-primary, #14b8a6);
+  color: #fff;
+}
+
+.action-btn.secondary {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.action-btn.danger {
+  background: rgba(244, 63, 94, 0.15);
+  color: #fda4af;
+}
+
+.action-btn:hover:not(:disabled) {
+  opacity: 0.88;
+}
+
+.action-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* FLAT LAYOUT: Removed double/triple stacked borders */
+
 .loading-state {
   min-height: 300px;
   display: flex;
@@ -227,45 +341,17 @@ function handleCancel() {
   justify-content: center;
   color: var(--color-text-muted);
 }
-.action-btn.primary {
-  background: rgba(20, 184, 166, 0.18);
-}
-
-.action-btn.secondary {
-  background: rgba(255, 255, 255, 0.06);
-}
-
-.action-btn:hover:not(:disabled) {
-  border-color: rgba(20, 184, 166, 0.5);
-}
-
-.action-btn:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-
-.create-event-card {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 1rem;
-  padding: 0.75rem;
-}
 
 .error-message {
-  margin-bottom: 0.9rem;
-  padding: 0.75rem 0.9rem;
-  border: 1px solid rgba(244, 63, 94, 0.25);
-  border-radius: 0.7rem;
-  background: rgba(244, 63, 94, 0.08);
+  margin-bottom: 1.25rem;
+  padding: 0.75rem 1rem;
+  border-radius: 0.6rem;
+  background: rgba(244, 63, 94, 0.1);
   color: #fda4af;
 }
 
 @media (max-width: 700px) {
-  .create-event-header {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
+ 
   .header-actions {
     width: 100%;
   }

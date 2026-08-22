@@ -17,9 +17,9 @@ const defaultEvent: EventModel = {
   type: '',
   user_id: 0,
   description: '',
-  visibility: 'public',
-  invitedEmails: [],
-  owner:null,
+  public: true,
+  invited_emails: [],
+  owner: null,
 }
 
 const formData = reactive({
@@ -30,11 +30,10 @@ const formData = reactive({
   location: '',
   type: '',
   description: '',
-  visibility: 'public' as EventModel['visibility'],
-  invitedEmails: [] as string[],
+  public: true as EventModel['public'],
+  invited_emails: [] as string[],
 
   // Image URL/path currently displayed.
-  // This can be an existing backend image or a local preview.
   image: '',
 
   // Actual newly selected image file.
@@ -48,12 +47,13 @@ const imageInput = ref<HTMLInputElement | null>(null)
 
 /**
  * Load an existing event into the form.
- *
- * EventView can call:
- *
- * eventForm.value?.load(event)
  */
 function load(event: EventModel) {
+  // Normalize invited_emails to avoid nested arrays like [["email"]]
+  const emails = Array.isArray(event.invited_emails) 
+    ? event.invited_emails.flat() 
+    : []
+
   Object.assign(formData, {
     id: event.id,
     name: event.name,
@@ -62,13 +62,13 @@ function load(event: EventModel) {
     location: event.location,
     type: event.type,
     description: event.description,
-    visibility: event.visibility,
-    invitedEmails: [event.invitedEmails],
+    public: Boolean(Number(event.public)),    
+  invited_emails: [...emails],
 
-    // Existing image from backend.
+    // Existing image from backend
     image: event.cover_image,
 
-    // No new file selected yet.
+    // No new file selected yet
     imageFile: null,
   })
 
@@ -79,6 +79,10 @@ function load(event: EventModel) {
   if (imageInput.value) {
     imageInput.value.value = ''
   }
+}
+
+function triggerFileInput() {
+  imageInput.value?.click()
 }
 
 /**
@@ -92,18 +96,14 @@ function get(): CreateEventPayload {
     location: formData.location,
     type: formData.type,
     description: formData.description,
-    visibility: formData.visibility,
-    invitedEmails: [...formData.invitedEmails],
-
-    // Actual File object.
+    public: formData.public,
+    invited_emails: [...formData.invited_emails],
     cover_image: formData.imageFile,
   }
 }
 
 /**
  * Get the payload for updating an event.
- *
- * image is null when the user did not select a new image.
  */
 function getUpdatePayload(): UpdateEventPayload {
   return {
@@ -113,8 +113,8 @@ function getUpdatePayload(): UpdateEventPayload {
     location: formData.location,
     type: formData.type,
     description: formData.description,
-    visibility: formData.visibility,
-    invitedEmails: [...formData.invitedEmails],
+    public: formData.public,
+    invited_emails: [...formData.invited_emails],
     cover_image: formData.imageFile,
   }
 }
@@ -128,9 +128,7 @@ function handleImageUpload(event: Event) {
   const input = event.target as HTMLInputElement
   const file = input.files?.[0]
 
-  if (!file) {
-    return
-  }
+  if (!file) return
 
   if (!file.type.startsWith('image/')) {
     imageError.value = 'Please select an image file.'
@@ -146,17 +144,15 @@ function handleImageUpload(event: Event) {
     return
   }
 
-  // Store the actual file for the API request.
   formData.imageFile = file
-
-  // Create a temporary browser preview.
   formData.image = URL.createObjectURL(file)
 }
 
 /**
  * Remove the current image.
  */
-function removeImage() {
+function removeImage(e?: Event) {
+  if (e) e.stopPropagation()
   formData.image = ''
   formData.imageFile = null
   imageError.value = ''
@@ -179,20 +175,19 @@ function addInviteEmail() {
     return
   }
 
-  const isValidEmail =
-    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)
+  const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)
 
   if (!isValidEmail) {
     inviteError.value = 'Please enter a valid email address.'
     return
   }
 
-  if (formData.invitedEmails.includes(normalized)) {
+  if (formData.invited_emails.includes(normalized)) {
     inviteError.value = 'This user is already invited.'
     return
   }
 
-  formData.invitedEmails.push(normalized)
+  formData.invited_emails.push(normalized)
   inviteEmail.value = ''
 }
 
@@ -200,10 +195,9 @@ function addInviteEmail() {
  * Remove an invited email.
  */
 function removeInviteEmail(email: string) {
-  formData.invitedEmails =
-    formData.invitedEmails.filter(
-      (entry) => entry !== email,
-    )
+  formData.invited_emails = formData.invited_emails.filter(
+    (entry) => entry !== email,
+  )
 }
 
 /**
@@ -222,14 +216,10 @@ defineExpose({
 </script>
 
 <template>
-  <form
-    class="edit-form"
-    @submit.prevent
-  >
+  <form class="edit-form" @submit.prevent>
     <!-- Event name -->
-    <label>
-      Event Name
-
+    <label class="form-group">
+      <span class="label-text">Event Name</span>
       <input
         v-model="formData.name"
         type="text"
@@ -240,9 +230,8 @@ defineExpose({
     </label>
 
     <!-- Event type -->
-    <label>
-      Type
-
+    <label class="form-group">
+      <span class="label-text">Type</span>
       <input
         v-model="formData.type"
         type="text"
@@ -253,126 +242,107 @@ defineExpose({
     </label>
 
     <!-- Date -->
-    <label>
-      Date
-
-      <input
-        v-model="formData.date"
-        type="date"
-        required
-      />
+    <label class="form-group">
+      <span class="label-text">Date</span>
+      <input v-model="formData.date" type="date" required />
     </label>
 
-    <!-- Location -->
-    <label>
-      Location
-
-      <input
-        v-model="formData.location"
-        type="text"
-        maxlength="120"
-        required
-        placeholder="Street, venue, address..."
-      />
-    </label>
-
-    <!-- City -->
-    <label>
-      City
-
-      <input
-        v-model="formData.city"
-        type="text"
-        maxlength="100"
-        required
-        placeholder="e.g. Szeged"
-      />
-    </label>
-
-    <!-- Image -->
-    <div class="image-field">
-      <label>
-        Event Image
-
+    <!-- Grid row for Location & City -->
+    <div class="form-row">
+      <label class="form-group">
+        <span class="label-text">Location</span>
         <input
-          ref="imageInput"
-          type="file"
-          accept="image/*"
-          @change="handleImageUpload"
+          v-model="formData.location"
+          type="text"
+          maxlength="120"
+          required
+          placeholder="Street, venue, address..."
         />
       </label>
 
-      <p
-        v-if="imageError"
-        class="image-error"
-      >
-        {{ imageError }}
-      </p>
-
-      <!-- Image preview -->
-      <div
-        v-if="formData.image"
-        class="image-preview"
-      >
-        <img
-          :src="formData.image"
-          :alt="formData.name || 'Event preview'"
+      <label class="form-group">
+        <span class="label-text">City</span>
+        <input
+          v-model="formData.city"
+          type="text"
+          maxlength="100"
+          required
+          placeholder="e.g. Szeged"
         />
+      </label>
+    </div>
 
+    <!-- Custom Image Upload Dropzone -->
+    <div class="form-group">
+      <span class="label-text">Event Cover Image</span>
+
+      <input
+        ref="imageInput"
+        type="file"
+        accept="image/*"
+        class="hidden-file-input"
+        @change="handleImageUpload"
+      />
+
+      <!-- Image Preview State -->
+      <div v-if="formData.image" class="image-preview">
+        <img :src="formData.image" :alt="formData.name || 'Event preview'" />
         <div class="image-overlay">
-          <button
-            type="button"
-            class="remove-image"
-            @click="removeImage"
-          >
-            Remove Image
+          <button type="button" class="btn-subtle" @click="triggerFileInput">
+            Change
+          </button>
+          <button type="button" class="btn-subtle danger" @click="removeImage">
+            Remove
           </button>
         </div>
       </div>
 
-      <!-- Empty image placeholder -->
-      <div
-        v-else
-        class="image-placeholder"
-      >
-        <span>Upload an event image</span>
-        <small>PNG, JPG, WEBP — max 5 MB</small>
+      <!-- Upload Dropzone Placeholder State -->
+      <div v-else class="upload-dropzone" @click="triggerFileInput">
+        <svg
+          class="upload-icon"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="1.5"
+            d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+          />
+        </svg>
+        <span class="upload-title">Click to upload cover image</span>
+        <span class="upload-hint">PNG, JPG, or WEBP up to 5MB</span>
       </div>
+
+      <p v-if="imageError" class="field-error">{{ imageError }}</p>
     </div>
 
     <!-- Description -->
-    <label>
-      Description
-
+    <label class="form-group">
+      <span class="label-text">Description</span>
       <textarea
         v-model="formData.description"
         maxlength="1200"
-        rows="6"
+        rows="5"
         required
         placeholder="Describe your event..."
       />
     </label>
 
     <!-- Visibility -->
-    <label>
-      Visibility
-
-      <select v-model="formData.visibility">
-        <option value="public">
-          Public
-        </option>
-
-        <option value="invite-only">
-          Invite Only
-        </option>
+    <label class="form-group">
+      <span class="label-text">Visibility</span>
+      <select v-model="formData.public" class="visibility-select">
+        <option :value="true">Public</option>
+        <option :value="false">Invite Only</option>
       </select>
     </label>
 
     <!-- Invitations -->
     <div class="invite-editor">
-      <p class="invite-title">
-        Invite users by email
-      </p>
+      <span class="label-text">Invite Users by Email</span>
 
       <div class="invite-input-row">
         <input
@@ -380,47 +350,30 @@ defineExpose({
           type="email"
           maxlength="120"
           placeholder="name@example.com"
-          :disabled="
-            formData.visibility !== 'invite-only'
-          "
           @keyup.enter.prevent="addInviteEmail"
         />
 
-        <button
-          type="button"
-          class="invite-btn"
-          :disabled="
-            formData.visibility !== 'invite-only'
-          "
-          @click="addInviteEmail"
-        >
+        <button type="button" class="btn-add" @click="addInviteEmail">
           Add
         </button>
       </div>
 
-      <p
-        v-if="inviteError"
-        class="invite-error"
-      >
-        {{ inviteError }}
-      </p>
+      <p v-if="inviteError" class="field-error">{{ inviteError }}</p>
 
-      <ul
-        v-if="formData.invitedEmails.length"
-        class="invited-list"
-      >
+      <ul v-if="formData.invited_emails.length" class="invited-tags">
         <li
-          v-for="email in formData.invitedEmails"
+          v-for="email in formData.invited_emails"
           :key="email"
+          class="email-tag"
         >
           <span>{{ email }}</span>
-
           <button
             type="button"
-            class="remove-invite"
+            class="tag-remove"
+            title="Remove email"
             @click="removeInviteEmail(email)"
           >
-            Remove
+            &times;
           </button>
         </li>
       </ul>
@@ -430,27 +383,42 @@ defineExpose({
 
 <style scoped>
 .edit-form {
-  padding: 1rem 0.35rem 0.35rem;
-  display: grid;
-  gap: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
 }
 
-.edit-form label {
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.form-row {
   display: grid;
-  gap: 0.35rem;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.label-text {
+  font-size: 0.85rem;
   font-weight: 600;
-  font-size: 0.9rem;
+  color: var(--color-text);
 }
 
-.edit-form input,
+.edit-form input[type='text'],
+.edit-form input[type='date'],
+.edit-form input[type='email'],
 .edit-form textarea,
 .edit-form select {
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
   color: var(--color-text);
   border-radius: 0.6rem;
-  padding: 0.62rem 0.7rem;
+  padding: 0.65rem 0.8rem;
   font: inherit;
+  font-size: 0.95rem;
+  transition: border-color 0.15s ease;
 }
 
 .edit-form textarea {
@@ -460,171 +428,181 @@ defineExpose({
 .edit-form input:focus,
 .edit-form textarea:focus,
 .edit-form select:focus {
-  outline: 2px solid rgba(20, 184, 166, 0.45);
-  outline-offset: 1px;
+  outline: none;
+  border-color: var(--color-primary, #14b8a6);
 }
 
-/* Image */
-
-.image-field {
-  display: grid;
-  gap: 0.5rem;
+/* CUSTOM FILE UPLOAD DROPZONE */
+.hidden-file-input {
+  display: none;
 }
 
-.image-field > label {
-  display: grid;
-  gap: 0.35rem;
-}
-
-.image-field input[type='file'] {
-  padding: 0.55rem;
-  cursor: pointer;
-}
-
-.image-preview,
-.image-placeholder {
+.upload-dropzone {
   width: 100%;
-  aspect-ratio: 16 / 7;
-  overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  aspect-ratio: 21 / 9;
+  border: 2px dashed rgba(255, 255, 255, 0.15);
   border-radius: 0.8rem;
-  background: rgba(255, 255, 255, 0.03);
-}
-
-.image-preview {
-  position: relative;
-}
-
-.image-preview img {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.image-overlay {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  display: flex;
-  justify-content: flex-end;
-  padding: 0.75rem;
-  background: linear-gradient(
-    transparent,
-    rgba(0, 0, 0, 0.65)
-  );
-}
-
-.remove-image {
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  background: rgba(0, 0, 0, 0.45);
-  color: var(--color-text);
-  border-radius: 0.5rem;
-  padding: 0.4rem 0.65rem;
-  cursor: pointer;
-  font: inherit;
-}
-
-.remove-image:hover {
-  background: rgba(0, 0, 0, 0.65);
-}
-
-.image-placeholder {
+  background: rgba(255, 255, 255, 0.02);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 0.35rem;
-  color: var(--color-text-muted);
-  border-style: dashed;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+  padding: 1rem;
+  box-sizing: border-box;
 }
 
-.image-placeholder span {
+.upload-dropzone:hover {
+  border-color: var(--color-primary, #14b8a6);
+  background: rgba(20, 184, 166, 0.04);
+}
+
+.upload-icon {
+  width: 32px;
+  height: 32px;
+  color: var(--color-text-muted, #9ca3af);
+}
+
+.upload-title {
   font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--color-text);
 }
 
-.image-placeholder small {
+.upload-hint {
   font-size: 0.75rem;
+  color: var(--color-text-muted, #9ca3af);
 }
 
-.image-error {
+.image-preview {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 21 / 9;
+  border-radius: 0.8rem;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.image-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.image-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.image-preview:hover .image-overlay {
+  opacity: 1;
+}
+
+.btn-subtle {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: #fff;
+  padding: 0.4rem 0.8rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.btn-subtle.danger {
+  background: rgba(244, 63, 94, 0.8);
+}
+.edit-form select option {
+  background: #222;
+  color: #fff;
+}
+/* INVITATIONS & TAGS */
+.invite-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.invite-input-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.invite-input-row input {
+  flex: 1;
+}
+
+.btn-add {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--color-text);
+  border-radius: 0.6rem;
+  padding: 0 1.25rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-add:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.invited-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  list-style: none;
+  margin: 0.25rem 0 0;
+  padding: 0;
+}
+
+.email-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 0.3rem 0.6rem;
+  border-radius: 0.4rem;
+  font-size: 0.85rem;
+  color: var(--color-text);
+}
+
+.tag-remove {
+  background: transparent;
+  border: none;
+  color: var(--color-text-muted, #9ca3af);
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 0;
+  cursor: pointer;
+}
+
+.tag-remove:hover {
+  color: #fda4af;
+}
+
+.field-error {
   margin: 0;
   color: #fda4af;
   font-size: 0.8rem;
 }
 
-/* Invitations */
-
-.invite-editor {
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 0.75rem;
-  padding: 0.75rem;
-  background: rgba(255, 255, 255, 0.02);
-}
-
-.invite-title {
-  margin: 0 0 0.55rem;
-  font-size: 0.86rem;
-  font-weight: 700;
-}
-
-.invite-input-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 0.55rem;
-}
-
-.invite-btn {
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  background: rgba(20, 184, 166, 0.18);
-  color: var(--color-text);
-  border-radius: 0.6rem;
-  padding: 0.5rem 0.75rem;
-  cursor: pointer;
-  font: inherit;
-}
-
-.invite-btn:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-
-.invite-error {
-  margin: 0.55rem 0 0;
-  color: #fda4af;
-  font-size: 0.8rem;
-}
-
-.invited-list {
-  margin: 0.55rem 0 0;
-  padding: 0;
-  list-style: none;
-  display: grid;
-  gap: 0.3rem;
-}
-
-.invited-list li {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 0.8rem;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 0.6rem;
-  padding: 0.45rem 0.55rem;
-}
-
-.remove-invite {
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--color-text);
-  border-radius: 0.5rem;
-  padding: 0.3rem 0.5rem;
-  cursor: pointer;
-  font: inherit;
-}
-
-.remove-invite:hover {
-  background: rgba(255, 255, 255, 0.1);
+@media (max-width: 600px) {
+  .form-row {
+    grid-template-columns: 1fr;
+  }
 }
 </style>
