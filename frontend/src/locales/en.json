@@ -7,9 +7,113 @@
     "button": "Sign Up"
   },
 
-  "header":{
-    "title":"Event Planner"
+  
+  "header": {
+    "title": "Event Planner",
+    "guest": "Guest",
+    "goToHomeAria": "Go to home",
+    "openProfileAria": "Open user profile",
+    "userProfileAlt": "User profile"
   },
+
+
+  "event":{
+    "date":"Date",
+    "location":"Location",
+    "no_date":"No date set",
+    "public":"Public"
+  },
+
+  "event_details":{
+    "not_public":"Invite-Only",
+    "public":"Public",
+    "date_label":"Date & Time",
+    "location":"Location",
+    "attendees":"Attendees",
+    "going":"going",
+    "user_going": "You are going",
+    "user_not_going":"Not attending",
+    "description_label":"About this event",
+    "organized":"Organized by",
+    "invited_guests":"Invited guests",
+    "empty_guests":"No guests have been invited yet."
+  },
+
+  
+  "eventView": {
+    "new": "New Event",
+    "updatingEvent": "Updating Event",
+    "eventOverview": "Event Overview",
+    "createEvent": "Create Event",
+    "editEvent": "Edit Event",
+    "eventDetails": "Event Details",
+    "createSubtitle": "Create an event and invite people to join.",
+    "editSubtitle": "Update details for this event.",
+    "viewSubtitle": "View event information and guest list.",
+    "saving": "Saving...",
+    "creating": "Creating...",
+    "saveChanges": "Save Changes",
+    "edit": "Edit",
+    "updating": "Updating...",
+    "leaveEvent": "Leave Event",
+    "joinEvent": "Join Event",
+    "back": "Back",
+    "delete": "Delete",
+    "deleting": "Deleting...",
+    "cancel": "Cancel",
+    "loadingEvent": "Loading event...",
+    "unableToLoadEvent": "Unable to load event",
+    "returnToEvents": "Return to Events",
+    "missingEventId": "Missing event ID.",
+    "failedToLoadEvent": "Failed to load event. The event may have been removed or is temporarily unavailable.",
+    "unableToReadForm": "Unable to read event form.",
+    "failedToUpdateEvent": "Failed to update event.",
+    "failedToCreateEvent": "Failed to create event.",
+    "deleteConfirmation": "Are you sure you want to delete this event?",
+    "failedToDeleteEvent": "Failed to delete event.",
+    "failedToUpdateAttendance": "Failed to update attendance status."
+  },
+
+
+  "eventForm": {
+    "eventName": "Event Name",
+    "eventNamePlaceholder": "Enter event name",
+    "type": "Type",
+    "typePlaceholder": "Concert, party, meetup...",
+    "date": "Date",
+    "location": "Location",
+    "locationPlaceholder": "Street, venue, address...",
+    "city": "City",
+    "cityPlaceholder": "e.g. Szeged",
+    "coverImage": "Event Cover Image",
+    "previewAlt": "Event preview",
+    "changeImage": "Change",
+    "removeImage": "Remove",
+    "uploadTitle": "Click to upload cover image",
+    "uploadHint": "PNG, JPG, or WEBP up to 5MB",
+    "imageTypeError": "Please select an image file.",
+    "imageSizeError": "The image must be smaller than 5 MB.",
+    "description": "Description",
+    "descriptionPlaceholder": "Describe your event...",
+    "visibility": "Visibility",
+    "public": "Public",
+    "inviteOnly": "Invite Only",
+    "inviteUsers": "Invite Users by Email",
+    "inviteOnlyHint": "Only available for Invite Only events",
+    "emailPlaceholder": "name{'@'}example.com",
+    "add": "Add",
+    "removeEmail": "Remove email",
+    "inviteEmailRequired": "Please enter an email address.",
+    "inviteEmailInvalid": "Please enter a valid email address.",
+    "inviteEmailDuplicate": "This user is already invited."
+  },
+
+  "pagination": {
+    "previous": "Previous",
+    "next": "Next",
+    "ariaLabel": "Pagination Navigation"
+  },
+
   "search":{
     "event":"Event",
     "location": "Location",
@@ -17,5 +121,69 @@
     "type":"Type",
     "location_hint":"Where do you want to go?",
     "search_hint":"Search events, speakers, or venues"
+  },
+
+  
+  "profileEvents": {
+    "loading": "Loading events...",
+    "noJoinedEvents": "You haven't joined any events yet.",
+    "noInvitedEvents": "You haven't been invited to any events yet.",
+    "noCreatedEvents": "You haven't created any events yet."
+  },
+
+  
+  "userSettings": {
+    "accountDetails": "Account details",
+    "avatarAlt": "User profile",
+    "name": "Name",
+    "saving": "Saving...",
+    "email": "Email",
+    "logout": "Logout",
+    "loggingOut": "Logging out..."
+  },
+
+
+  "home": {
+    "loading": "Loading events...",
+    "noEvents": "No events found."
+  },
+
+  "profile": {
+    "eventSectionsAria": "Event sections",
+    "createEvent": "Create Event",
+    "tabs": {
+      "myEvents": "My Events",
+      "joinedEvents": "Joined Events",
+      "invitedEvents": "Invited Events"
+    }
+  },
+  
+  "auth": {
+    "kicker": "Account",
+    "login": "Login",
+    "signup": "Sign Up",
+    "switchAria": "Switch auth mode",
+    "name": "Name",
+    "email": "Email",
+    "password": "Password",
+    "confirmPassword": "Confirm Password",
+    "pleaseWait": "Please wait...",
+    "errors": {
+      "nameRequired": "Name is required.",
+      "fieldsRequired": "Email and password are required.",
+      "passwordsMismatch": "Passwords do not match.",
+      "failed": "Authentication failed."
+    }
+  },
+
+  
+  "notFound": {
+    "title": "Page not found",
+    "description": "Sorry, we couldn't find the page you're looking for. It might have been moved or deleted.",
+    "goHome": "Go Home",
+    "goBack": "Go Back"
   }
+
+
+
 }

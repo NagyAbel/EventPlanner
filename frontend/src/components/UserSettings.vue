@@ -1,16 +1,17 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import profile from '@/assets/profile.svg'
 
+const { t } = useI18n()
 const auth = useAuthStore()
 const router = useRouter()
 
 const name = ref('')
 const savingName = ref(false)
 
-// Initialize the local input from the authenticated user.
 watch(
   () => auth.user?.name,
   (newName) => {
@@ -60,22 +61,23 @@ async function logout() {
   }
 }
 </script>
+
 <template>
   <section class="user-settings">
     <div v-if="auth.user" class="settings-header">
       <div class="profile-avatar">
-        <img :src="profile" alt="User profile" />
+        <img :src="profile" :alt="t('userSettings.avatarAlt')" />
       </div>
 
       <div class="profile-meta">
-        <p class="profile-kicker">Channel</p>
+        <p class="profile-kicker">{{ t('userSettings.accountDetails') }}</p>
         <h1>{{ auth.user.name }}</h1>
       </div>
     </div>
 
     <div v-if="auth.user" class="profile-grid">
       <label class="profile-field">
-        <span>Name</span>
+        <span>{{ t('userSettings.name') }}</span>
 
         <input
           v-model="name"
@@ -87,12 +89,12 @@ async function logout() {
         />
 
         <small v-if="savingName" class="saving-text">
-          Saving...
+          {{ t('userSettings.saving') }}
         </small>
       </label>
 
       <label class="profile-field profile-field--full">
-        <span>Email</span>
+        <span>{{ t('userSettings.email') }}</span>
 
         <input
           :value="auth.user.email"
@@ -108,10 +110,11 @@ async function logout() {
       :disabled="auth.loading"
       @click="logout"
     >
-      {{ auth.loading ? 'Logging out...' : 'Logout' }}
+      {{ auth.loading ? t('userSettings.loggingOut') : t('userSettings.logout') }}
     </button>
   </section>
 </template>
+
 <style scoped>
 .user-settings {
   box-sizing: border-box;
@@ -225,6 +228,12 @@ input:disabled {
   background: rgba(148, 163, 184, 0.08);
   color: var(--color-text-muted);
   cursor: not-allowed;
+}
+
+.saving-text {
+  color: var(--color-primary);
+  font-size: 0.75rem;
+  margin-top: 0.2rem;
 }
 
 .logout-button {

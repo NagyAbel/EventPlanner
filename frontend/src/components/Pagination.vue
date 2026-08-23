@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 const props = defineProps<{
   currentPage: number
@@ -9,6 +10,8 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'page-change', page: number): void
 }>()
+
+const { t } = useI18n()
 
 const visiblePageNumbers = computed(() => {
   const total = props.totalPages
@@ -50,7 +53,7 @@ function goToPage(page: number) {
   <nav
     v-if="totalPages > 1"
     class="pagination-container"
-    aria-label="Pagination Navigation"
+    :aria-label="t('pagination.ariaLabel')"
   >
     <button
       type="button"
@@ -58,7 +61,7 @@ function goToPage(page: number) {
       :disabled="currentPage === 1"
       @click="goToPage(currentPage - 1)"
     >
-      &larr; Previous
+      &larr; {{ t('pagination.previous') }}
     </button>
 
     <div class="page-numbers">
@@ -83,7 +86,7 @@ function goToPage(page: number) {
       :disabled="currentPage === totalPages"
       @click="goToPage(currentPage + 1)"
     >
-      Next &rarr;
+      {{ t('pagination.next') }} &rarr;
     </button>
   </nav>
 </template>

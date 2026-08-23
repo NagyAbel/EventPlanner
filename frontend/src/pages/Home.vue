@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import Event from '@/components/Event.vue'
 import Search from '@/components/Search.vue'
 import { useEventStore, type FetchEventsOptions } from '@/stores/event'
 import Pagination from '@/components/Pagination.vue'
 
+const { t } = useI18n()
 const eventStore = useEventStore()
 
 const currentPage = ref(1)
@@ -46,12 +48,12 @@ onMounted(() => {
       <Transition name="fade-switch" mode="out-in">
         <!-- LOADING STATE -->
         <div v-if="eventStore.loading" key="loading" class="state-container">
-          <p class="state-text">Loading events...</p>
+          <p class="state-text">{{ t('home.loading') }}</p>
         </div>
 
         <!-- EMPTY STATE -->
         <div v-else-if="!eventStore.events.length" key="empty" class="state-container">
-          <p class="state-text">No events found.</p>
+          <p class="state-text">{{ t('home.noEvents') }}</p>
         </div>
 
         <!-- EVENTS GRID WITH SMOOTH FADE IN -->

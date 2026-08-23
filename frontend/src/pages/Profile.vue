@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import UserSettings from '@/components/UserSettings.vue'
 import ProfileEvents from '@/components/ProfileEvents.vue'
 
 const router = useRouter()
+const { t } = useI18n()
 
-// 1. Updated type definition to include 'invited-events'
 type ProfileTab = 'my-events' | 'joined-events' | 'invited-events'
 const activeTab = ref<ProfileTab>('my-events')
 
@@ -26,7 +27,7 @@ function createEvent() {
         <div
           class="events-tabs"
           role="tablist"
-          aria-label="Event sections"
+          :aria-label="t('profile.eventSectionsAria')"
         >
           <button
             type="button"
@@ -36,7 +37,7 @@ function createEvent() {
             :aria-selected="activeTab === 'my-events'"
             @click="activeTab = 'my-events'"
           >
-            My Events
+            {{ t('profile.tabs.myEvents') }}
           </button>
 
           <button
@@ -47,10 +48,9 @@ function createEvent() {
             :aria-selected="activeTab === 'joined-events'"
             @click="activeTab = 'joined-events'"
           >
-            Joined Events
+            {{ t('profile.tabs.joinedEvents') }}
           </button>
 
-          <!-- 2. Added Invited Events tab -->
           <button
             type="button"
             class="events-tab"
@@ -59,7 +59,7 @@ function createEvent() {
             :aria-selected="activeTab === 'invited-events'"
             @click="activeTab = 'invited-events'"
           >
-            Invited Events
+            {{ t('profile.tabs.invitedEvents') }}
           </button>
         </div>
 
@@ -68,8 +68,8 @@ function createEvent() {
           class="create-button"
           @click="createEvent"
         >
-          <span class="create-icon">+</span>
-          Create Event
+          <span class="create-icon" aria-hidden="true">+</span>
+          {{ t('profile.createEvent') }}
         </button>
       </div>
 
@@ -80,7 +80,6 @@ function createEvent() {
 </template>
 
 <style scoped>
-/* Unchanged CSS */
 .profile-page {
   display: grid;
   grid-template-columns: 280px minmax(0, 1fr);

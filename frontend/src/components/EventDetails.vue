@@ -2,10 +2,12 @@
 import { computed } from 'vue'
 import type { EventModel } from '@/stores/event'
 import { useAuthStore } from '@/stores/auth'
+import { useI18n } from 'vue-i18n'
 
 const props = defineProps<{
   event: EventModel
 }>()
+const { t } = useI18n()
 
 const authStore = useAuthStore()
 
@@ -15,7 +17,7 @@ const isOwner = computed(() => {
 })
 
 const formattedDate = (date: string) => {
-  if (!date) return 'No date set'
+  if (!date) return t("event.no_date")
   return new Intl.DateTimeFormat('en-US', {
     weekday: 'short',
     year: 'numeric',
@@ -33,13 +35,12 @@ const formattedTime = (date: string) => {
 }
 
 const visibilityLabel = (isPublic: EventModel['public']) => {
-  return isPublic ? 'Public' : 'Invite Only'
+  return isPublic ? t('event_details.public') : t('event_details.not_public')
 }
 </script>
 
 <template>
   <article class="event-details">
-    <!-- Hero section with overlay visibility badge -->
     <div :class="['event-hero', { 'event-hero-empty': !props.event.cover_image }]">
       <img
         v-if="props.event.cover_image"
@@ -47,7 +48,6 @@ const visibilityLabel = (isPublic: EventModel['public']) => {
         :alt="props.event.name"
       />
 
-      <!-- Top-right absolute visibility badge -->
       <span
         class="visibility-badge"
         :class="{ 'is-private': !props.event.public }"
@@ -70,7 +70,7 @@ const visibilityLabel = (isPublic: EventModel['public']) => {
             <div class="section-heading">
               <span class="section-icon">📅</span>
               <div class="section-body">
-                <p class="section-label">Date & Time</p>
+                <p class="section-label">{{ t("event_details.date_label") }}</p>
                 <p class="section-value">{{ formattedDate(props.event.date) }}</p>
                 <p class="section-secondary">{{ formattedTime(props.event.date) }}</p>
               </div>
@@ -81,7 +81,7 @@ const visibilityLabel = (isPublic: EventModel['public']) => {
             <div class="section-heading">
               <span class="section-icon">📍</span>
               <div class="section-body">
-                <p class="section-label">Location</p>
+                <p class="section-label">{{ t("event_details.location") }}</p>
                 <p class="section-value" :title="props.event.location">{{ props.event.location }}</p>
                 <p class="section-secondary" :title="props.event.city">{{ props.event.city }}</p>
               </div>
@@ -93,10 +93,10 @@ const visibilityLabel = (isPublic: EventModel['public']) => {
             <div class="section-heading">
               <span class="section-icon">👥</span>
               <div class="section-body">
-                <p class="section-label">Attendees</p>
-                <p class="section-value">{{ props.event.attendee_count ?? 0 }} going</p>
+                <p class="section-label">{{ t("event_details.attendees") }}</p>
+                <p class="section-value">{{ props.event.attendee_count ?? 0 }} {{t("event_details.going")}}</p>
                 <p v-if="!isOwner" class="section-secondary">
-                  {{ props.event.is_attending ? 'You are going' : 'Not attending' }}
+                  {{ props.event.is_attending ? t("event_details.user_going")  : t("event_details.user_not_going")}}
                 </p>
               </div>
             </div>
@@ -104,7 +104,7 @@ const visibilityLabel = (isPublic: EventModel['public']) => {
         </div>
 
         <section v-if="props.event.description" class="description-section">
-          <p class="section-label">About this event</p>
+          <p class="section-label">{{t("event_details.description_label")}}</p>
           <p class="description">{{ props.event.description }}</p>
         </section>
       </div>
@@ -113,7 +113,7 @@ const visibilityLabel = (isPublic: EventModel['public']) => {
       <aside class="event-sidebar">
         <!-- Owner -->
         <div v-if="props.event.owner" class="info-card">
-          <p class="section-label">Organized by</p>
+          <p class="section-label">{{t("event_details.organized")}}</p>
           <div class="owner">
             <div class="owner-avatar">
               {{ props.event.owner.name?.charAt(0).toUpperCase() }}
@@ -128,7 +128,7 @@ const visibilityLabel = (isPublic: EventModel['public']) => {
         <!-- Scrollable Guest List -->
         <div v-if="!props.event.public" class="info-card">
           <div class="invite-heading">
-            <p class="section-label">Invited guests</p>
+            <p class="section-label">{{t("event_details.invited_guests")}}</p>
             <span class="guest-count">{{ props.event.invited_emails?.length || 0 }}</span>
           </div>
 
@@ -139,7 +139,7 @@ const visibilityLabel = (isPublic: EventModel['public']) => {
             </li>
           </ul>
 
-          <p v-else class="empty-guests">No guests have been invited yet.</p>
+          <p v-else class="empty-guests">{{ t("event_details.empty_guests") }}</p>
         </div>
       </aside>
     </div>

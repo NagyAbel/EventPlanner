@@ -29,12 +29,12 @@ async function submitAuth() {
   feedback.value = ''
 
   if (mode.value === 'signup' && !form.name.trim()) {
-    feedback.value = 'Name is required.'
+    feedback.value = t('auth.errors.nameRequired')
     return
   }
 
   if (!form.email.trim() || !form.password.trim()) {
-    feedback.value = 'Email and password are required.'
+    feedback.value = t('auth.errors.fieldsRequired')
     return
   }
 
@@ -42,7 +42,7 @@ async function submitAuth() {
     mode.value === 'signup' &&
     form.password !== form.passwordConfirmation
   ) {
-    feedback.value = 'Passwords do not match.'
+    feedback.value = t('auth.errors.passwordsMismatch')
     return
   }
 
@@ -66,7 +66,7 @@ async function submitAuth() {
     feedback.value =
       error instanceof Error
         ? error.message
-        : 'Authentication failed.'
+        : t('auth.errors.failed')
   }
 }
 </script>
@@ -75,17 +75,17 @@ async function submitAuth() {
   <section class="auth-page">
     <div class="auth-card">
       <header class="auth-header">
-        <p class="kicker">Account</p>
+        <p class="kicker">{{ t('auth.kicker') }}</p>
 
         <h1>
-          {{ mode === 'login' ? 'Login' : t('signup.title', 'Sign Up') }}
+          {{ mode === 'login' ? t('auth.login') : t('auth.signup') }}
         </h1>
       </header>
 
       <div
         class="auth-switch"
         role="tablist"
-        aria-label="Switch auth mode"
+        :aria-label="t('auth.switchAria')"
       >
         <button
           type="button"
@@ -95,7 +95,7 @@ async function submitAuth() {
           :aria-selected="mode === 'login'"
           @click="setMode('login')"
         >
-          Login
+          {{ t('auth.login') }}
         </button>
 
         <button
@@ -106,7 +106,7 @@ async function submitAuth() {
           :aria-selected="mode === 'signup'"
           @click="setMode('signup')"
         >
-          {{ t('signup.title', 'Sign Up') }}
+          {{ t('auth.signup') }}
         </button>
       </div>
 
@@ -118,7 +118,7 @@ async function submitAuth() {
           v-if="mode === 'signup'"
           class="auth-field"
         >
-          <span>Name</span>
+          <span>{{ t('auth.name') }}</span>
 
           <input
             v-model="form.name"
@@ -130,7 +130,7 @@ async function submitAuth() {
         </label>
 
         <label class="auth-field">
-          <span>{{ t('signup.email', 'Email') }}</span>
+          <span>{{ t('auth.email') }}</span>
 
           <input
             v-model="form.email"
@@ -142,7 +142,7 @@ async function submitAuth() {
         </label>
 
         <label class="auth-field">
-          <span>{{ t('signup.password', 'Password') }}</span>
+          <span>{{ t('auth.password') }}</span>
 
           <input
             v-model="form.password"
@@ -161,7 +161,7 @@ async function submitAuth() {
           v-if="mode === 'signup'"
           class="auth-field"
         >
-          <span>Confirm Password</span>
+          <span>{{ t('auth.confirmPassword') }}</span>
 
           <input
             v-model="form.passwordConfirmation"
@@ -179,10 +179,10 @@ async function submitAuth() {
         >
           {{
             auth.loading
-              ? 'Please wait...'
+              ? t('auth.pleaseWait')
               : mode === 'login'
-                ? 'Login'
-                : t('signup.button', 'Sign Up')
+                ? t('auth.login')
+                : t('auth.signup')
           }}
         </button>
       </form>

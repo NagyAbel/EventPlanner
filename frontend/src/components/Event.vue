@@ -19,18 +19,10 @@ interface EventCardProps {
 const props = defineProps<EventCardProps>()
 
 const labels = {
-  date: t('event.date', 'Dátum'),
-  location: t('event.location', 'Helyszín'),
-  type: t('event.type', 'Típus'),
-  description: t('event.description', 'Leírás'),
+  date: t('event.date'),
+  location: t('event.location'),
 }
 
-/**
- * Always convert the backend ID to a string.
- *
- * Laravel may return an integer ID while Vue/router expects
- * the route parameter to be a string.
- */
 const eventId = computed(() => String(props.id))
 
 function openEvent(editMode = false) {
@@ -48,7 +40,6 @@ function openEvent(editMode = false) {
     location: props.location,
     cover_image: props.cover_image,
     type: props.type,
-    description: props.description,
   }
 
   sessionStorage.setItem(
@@ -106,16 +97,6 @@ function openEvent(editMode = false) {
           <dd>{{ props.location }}</dd>
         </div>
       </dl>
-
-      <div class="event-description">
-        <h3>
-          {{ t('event.description', 'Leírás') }}
-        </h3>
-
-        <p>
-          {{ props.description }}
-        </p>
-      </div>
     </div>
   </article>
 </template>

@@ -6,6 +6,9 @@ import type {
 } from '@/stores/event'
 
 import { reactive, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const defaultEvent: EventModel = {
   id: -1,
@@ -19,8 +22,8 @@ const defaultEvent: EventModel = {
   description: '',
   public: true,
   invited_emails: [],
-  attendee_count:0,
-  is_attending:false,
+  attendee_count: 0,
+  is_attending: false,
   owner: null,
 }
 
@@ -133,7 +136,7 @@ function handleImageUpload(event: Event) {
   if (!file) return
 
   if (!file.type.startsWith('image/')) {
-    imageError.value = 'Please select an image file.'
+    imageError.value = t('eventForm.imageTypeError')
     input.value = ''
     return
   }
@@ -141,7 +144,7 @@ function handleImageUpload(event: Event) {
   const maxSize = 5 * 1024 * 1024
 
   if (file.size > maxSize) {
-    imageError.value = 'The image must be smaller than 5 MB.'
+    imageError.value = t('eventForm.imageSizeError')
     input.value = ''
     return
   }
@@ -175,19 +178,19 @@ function addInviteEmail() {
   inviteError.value = ''
 
   if (!normalized) {
-    inviteError.value = 'Please enter an email address.'
+    inviteError.value = t('eventForm.inviteEmailRequired')
     return
   }
 
   const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)
 
   if (!isValidEmail) {
-    inviteError.value = 'Please enter a valid email address.'
+    inviteError.value = t('eventForm.inviteEmailInvalid')
     return
   }
 
   if (formData.invited_emails.includes(normalized)) {
-    inviteError.value = 'This user is already invited.'
+    inviteError.value = t('eventForm.inviteEmailDuplicate')
     return
   }
 
@@ -224,62 +227,62 @@ defineExpose({
   <form class="edit-form" @submit.prevent>
     <!-- Event name -->
     <label class="form-group">
-      <span class="label-text">Event Name</span>
+      <span class="label-text">{{ t('eventForm.eventName') }}</span>
       <input
         v-model="formData.name"
         type="text"
         maxlength="80"
         required
-        placeholder="Enter event name"
+        :placeholder="t('eventForm.eventNamePlaceholder')"
       />
     </label>
 
     <!-- Event type -->
     <label class="form-group">
-      <span class="label-text">Type</span>
+      <span class="label-text">{{ t('eventForm.type') }}</span>
       <input
         v-model="formData.type"
         type="text"
         maxlength="40"
         required
-        placeholder="Concert, party, meetup..."
+        :placeholder="t('eventForm.typePlaceholder')"
       />
     </label>
 
     <!-- Date -->
     <label class="form-group">
-      <span class="label-text">Date</span>
+      <span class="label-text">{{ t('eventForm.date') }}</span>
       <input v-model="formData.date" type="date" required />
     </label>
 
     <!-- Grid row for Location & City -->
     <div class="form-row">
       <label class="form-group">
-        <span class="label-text">Location</span>
+        <span class="label-text">{{ t('eventForm.location') }}</span>
         <input
           v-model="formData.location"
           type="text"
           maxlength="120"
           required
-          placeholder="Street, venue, address..."
+          :placeholder="t('eventForm.locationPlaceholder')"
         />
       </label>
 
       <label class="form-group">
-        <span class="label-text">City</span>
+        <span class="label-text">{{ t('eventForm.city') }}</span>
         <input
           v-model="formData.city"
           type="text"
           maxlength="100"
           required
-          placeholder="e.g. Szeged"
+          :placeholder="t('eventForm.cityPlaceholder')"
         />
       </label>
     </div>
 
     <!-- Custom Image Upload Dropzone -->
     <div class="form-group">
-      <span class="label-text">Event Cover Image</span>
+      <span class="label-text">{{ t('eventForm.coverImage') }}</span>
 
       <input
         ref="imageInput"
@@ -291,13 +294,13 @@ defineExpose({
 
       <!-- Image Preview State -->
       <div v-if="formData.image" class="image-preview">
-        <img :src="formData.image" :alt="formData.name || 'Event preview'" />
+        <img :src="formData.image" :alt="formData.name || t('eventForm.previewAlt')" />
         <div class="image-overlay">
           <button type="button" class="btn-subtle" @click="triggerFileInput">
-            Change
+            {{ t('eventForm.changeImage') }}
           </button>
           <button type="button" class="btn-subtle danger" @click="removeImage">
-            Remove
+            {{ t('eventForm.removeImage') }}
           </button>
         </div>
       </div>
@@ -317,8 +320,8 @@ defineExpose({
             d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
           />
         </svg>
-        <span class="upload-title">Click to upload cover image</span>
-        <span class="upload-hint">PNG, JPG, or WEBP up to 5MB</span>
+        <span class="upload-title">{{ t('eventForm.uploadTitle') }}</span>
+        <span class="upload-hint">{{ t('eventForm.uploadHint') }}</span>
       </div>
 
       <p v-if="imageError" class="field-error">{{ imageError }}</p>
@@ -326,30 +329,30 @@ defineExpose({
 
     <!-- Description -->
     <label class="form-group">
-      <span class="label-text">Description</span>
+      <span class="label-text">{{ t('eventForm.description') }}</span>
       <textarea
         v-model="formData.description"
         maxlength="1200"
         rows="5"
         required
-        placeholder="Describe your event..."
+        :placeholder="t('eventForm.descriptionPlaceholder')"
       />
     </label>
 
     <!-- Visibility -->
     <label class="form-group">
-      <span class="label-text">Visibility</span>
+      <span class="label-text">{{ t('eventForm.visibility') }}</span>
       <select v-model="formData.public" class="visibility-select">
-        <option :value="true">Public</option>
-        <option :value="false">Invite Only</option>
+        <option :value="true">{{ t('eventForm.public') }}</option>
+        <option :value="false">{{ t('eventForm.inviteOnly') }}</option>
       </select>
     </label>
 
     <!-- Invitations -->
     <div class="invite-editor" :class="{ 'is-disabled': formData.public }">
       <span class="label-text">
-        Invite Users by Email
-        <span v-if="formData.public" class="disabled-hint">(Only available for Invite Only events)</span>
+        {{ t('eventForm.inviteUsers') }}
+        <span v-if="formData.public" class="disabled-hint">({{ t('eventForm.inviteOnlyHint') }})</span>
       </span>
 
       <div class="invite-input-row">
@@ -357,7 +360,7 @@ defineExpose({
           v-model="inviteEmail"
           type="email"
           maxlength="120"
-          placeholder="name@example.com"
+          :placeholder="t('eventForm.emailPlaceholder')"
           :disabled="formData.public"
           @keyup.enter.prevent="addInviteEmail"
         />
@@ -368,7 +371,7 @@ defineExpose({
           :disabled="formData.public"
           @click="addInviteEmail"
         >
-          Add
+          {{ t('eventForm.add') }}
         </button>
       </div>
 
@@ -384,7 +387,7 @@ defineExpose({
           <button
             type="button"
             class="tag-remove"
-            title="Remove email"
+            :title="t('eventForm.removeEmail')"
             :disabled="formData.public"
             @click="removeInviteEmail(email)"
           >
@@ -395,7 +398,6 @@ defineExpose({
     </div>
   </form>
 </template>
-
 <style scoped>
 .edit-form {
   display: flex;

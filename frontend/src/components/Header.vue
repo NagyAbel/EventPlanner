@@ -15,25 +15,24 @@ function goToHome(){
    router.push('/')
 }
 </script>
+
 <template>
     <div class="header">
             <div class="left_holder">
-               <button class="home_button" type="button" aria-label="Go to home" @click="goToHome">
+               <button class="home_button" type="button" :aria-label="t('header.goToHomeAria')" @click="goToHome">
                   {{ t("header.title") }}
                </button>
 
             </div>
             <div class = "right_holder">
-                        <button class="profile_button" type="button" aria-label="Open user profile" @click="goToProfile">
-                           <img class="profile_icon" :src="profile" alt="User profile">
-                            <p class="profile_name">{{ auth.user?.name  ?? "Vendeg"}}</p>
+                        <button class="profile_button" type="button" :aria-label="t('header.openProfileAria')" @click="goToProfile">
+                           <img class="profile_icon" :src="profile" :alt="t('header.userProfileAlt')">
+                            <p class="profile_name">{{ auth.user?.name ?? t('header.guest') }}</p>
                         </button>
-                        
-
             </div>
     </div>
-
 </template>
+
 <style scoped>
  .header{
     width: 100%;

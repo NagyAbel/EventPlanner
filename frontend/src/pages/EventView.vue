@@ -6,15 +6,17 @@ import type { EventModel } from '@/stores/event'
 import { useEventStore } from '@/stores/event'
 import { useAuthStore } from '@/stores/auth'
 import EventDetails from '@/components/EventDetails.vue'
+import { useI18n } from 'vue-i18n'
 
 const router = useRouter()
 const route = useRoute()
 const eventStore = useEventStore()
 const authStore = useAuthStore()
+const { t } = useI18n()
 
 const eventForm = ref<InstanceType<typeof EventForm> | null>(null)
 
-const isEditMode = computed(() => route.query.edit === '1')
+const isEditMode = computed(() => route.query.edit === '1' && isOwner)
 const isCreateMode = computed(() => route.path.endsWith('/create'))
 const eventId = computed(() => Number(route.params.id))
 
@@ -31,34 +33,22 @@ const isOwner = computed(() => {
   return Number(event.value.owner?.id) === Number(authStore.user.id)
 })
 
-const eyebrowText = computed(() => {
-  if (isCreateMode.value) return 'New Event'
-  if (isEditMode.value) return 'Updating Event'
-  return 'Event Overview'
-})
-
 const titleText = computed(() => {
-  if (isCreateMode.value) return 'Create Event'
-  if (isEditMode.value) return 'Edit Event'
-  return 'Event Details'
-})
-
-const subtitleText = computed(() => {
-  if (isCreateMode.value) return 'Create an event and invite people to join.'
-  if (isEditMode.value) return 'Update details for this event.'
-  return 'View event information and guest list.'
+  if (isCreateMode.value) return t('eventView.createEvent')
+  if (isEditMode.value) return t('eventView.editEvent')
+  return t('eventView.eventOverview')
 })
 
 const buttonText = computed(() => {
-  if (isSaving.value) return isEditMode.value ? 'Saving...' : 'Creating...'
-  if (isCreateMode.value) return 'Create Event'
-  if (isEditMode.value) return 'Save Changes'
-  return 'Edit'
+  if (isSaving.value) return isEditMode.value ? t('eventView.saving') : t('eventView.creating')
+  if (isCreateMode.value) return t('eventView.createEvent')
+  if (isEditMode.value) return t('eventView.saveChanges')
+  return t('eventView.edit')
 })
 
 const attendButtonText = computed(() => {
-  if (isJoining.value) return 'Updating...'
-  return event.value?.is_attending ? 'Leave Event' : 'Join Event'
+  if (isJoining.value) return t('eventView.updating')
+  return event.value?.is_attending ? t('eventView.leaveEvent') : t('eventView.joinEvent')
 })
 
 function handleGoBack() {
@@ -76,19 +66,22 @@ onMounted(async () => {
   }
 
   if (!eventId.value) {
-    errorMessage.value = 'Missing event ID.'
+    errorMessage.value = t('eventView.missingEventId')
     isLoading.value = false
     return
   }
 
   try {
-    // Let Pinia handle fetching and returning the event
     event.value = await eventStore.fetchEvent(eventId.value)
     errorMessage.value = ''
+
+    if (isEditMode.value && !isOwner.value) {
+      router.replace({ path: route.path, query: {} })
+    }
   } catch (error) {
     console.error('Failed to load event:', error)
     event.value = null
-    errorMessage.value = 'Failed to load event. The event may have been removed or is temporarily unavailable.'
+    errorMessage.value = t('eventView.failedToLoadEvent')
   } finally {
     isLoading.value = false
     if (isEditMode.value && event.value) {
@@ -106,7 +99,7 @@ watch(isEditMode, async (editing) => {
 
 async function handleSubmit() {
   if (!isCreateMode.value && !isEditMode.value) {
-    router.push({ query: { ...route.query, edit: '1' } })
+    router.replace({ query: { ...route.query, edit: '1' } })
     return
   }
 
@@ -114,7 +107,7 @@ async function handleSubmit() {
   const formData = eventForm.value?.get()
 
   if (!formData) {
-    errorMessage.value = 'Unable to read event form.'
+    errorMessage.value = t('eventView.unableToReadForm')
     return
   }
 
@@ -124,17 +117,17 @@ async function handleSubmit() {
     if (isEditMode.value) {
       const updatedEvent = await eventStore.updateEvent(eventId.value, formData)
       event.value = updatedEvent
-      router.push({ path: `/events/${eventId.value}`, query: {} })
+      router.replace({ path: `/events/${eventId.value}`, query: {} })
     } else {
       const createdEvent = await eventStore.createEvent(formData)
       event.value = createdEvent
-      router.push(`/events/${createdEvent.id}`)
+      router.replace(`/events/${createdEvent.id}`)
     }
   } catch (error) {
     console.error('Failed to save event:', error)
     errorMessage.value = isEditMode.value
-      ? 'Failed to update event.'
-      : 'Failed to create event.'
+      ? t('eventView.failedToUpdateEvent')
+      : t('eventView.failedToCreateEvent')
   } finally {
     isSaving.value = false
   }
@@ -142,7 +135,7 @@ async function handleSubmit() {
 
 function handleCancel() {
   if (isEditMode.value) {
-    router.push({ path: route.path, query: {} })
+    router.replace({ path: route.path, query: {} })
   } else {
     handleGoBack()
   }
@@ -151,7 +144,7 @@ function handleCancel() {
 async function handleDelete() {
   if (!eventId.value) return
 
-  const confirmed = window.confirm('Are you sure you want to delete this event?')
+  const confirmed = window.confirm(t('eventView.deleteConfirmation'))
   if (!confirmed) return
 
   isDeleting.value = true
@@ -162,7 +155,7 @@ async function handleDelete() {
     handleGoBack()
   } catch (error) {
     console.error('Failed to delete event:', error)
-    errorMessage.value = 'Failed to delete event.'
+    errorMessage.value = t('eventView.failedToDeleteEvent')
   } finally {
     isDeleting.value = false
   }
@@ -179,7 +172,7 @@ async function handleJoin() {
     event.value = await eventStore.fetchEvent(eventId.value)
   } catch (error) {
     console.error('Failed to update event attendance:', error)
-    errorMessage.value = 'Failed to update attendance status.'
+    errorMessage.value = t('eventView.failedToUpdateAttendance')
   } finally {
     isJoining.value = false
   }
@@ -188,82 +181,81 @@ async function handleJoin() {
 
 <template>
   <section class="event-page">
-    <!-- PROMINENT BACK BUTTON -->
-    <div class="top-nav">
-      <button type="button" class="back-btn" @click="handleGoBack">
-        <svg
-          class="back-icon"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2.5"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <line x1="19" y1="12" x2="5" y2="12"></line>
-          <polyline points="12 19 5 12 12 5"></polyline>
-        </svg>
-        <span>Back</span>
-      </button>
-    </div>
-
     <header class="event-header">
-      <div>
-        <p class="eyebrow">{{ eyebrowText }}</p>
-        <h1>{{ titleText }}</h1>
-        <p class="subtitle">{{ subtitleText }}</p>
+      <div class="header-left">
+        <button type="button" class="back-btn" @click="handleGoBack">
+          <svg
+            class="back-icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <line x1="19" y1="12" x2="5" y2="12"></line>
+            <polyline points="12 19 5 12 12 5"></polyline>
+          </svg>
+          <span>{{ t('eventView.back') }}</span>
+        </button>
       </div>
 
-      <div class="header-actions" v-if="!isLoading && (event || isCreateMode)">
-        <!-- OWNER ACTIONS -->
-        <template v-if="isOwner">
-          <button
-            v-if="!isCreateMode"
-            type="button"
-            class="action-btn danger"
-            :disabled="isSaving || isDeleting"
-            @click="handleDelete"
-          >
-            {{ isDeleting ? 'Deleting...' : 'Delete' }}
-          </button>
+      <div class="header-title">
+        <h1>{{ titleText }}</h1>
+      </div>
 
-          <button
-            v-if="isCreateMode || isEditMode"
-            type="button"
-            class="action-btn secondary"
-            :disabled="isSaving || isDeleting"
-            @click="handleCancel"
-          >
-            Cancel
-          </button>
+      <div class="header-actions">
+        <template v-if="!isLoading && (event || isCreateMode)">
+          <!-- OWNER ACTIONS -->
+          <template v-if="isOwner">
+            <button
+              v-if="!isCreateMode"
+              type="button"
+              class="action-btn danger"
+              :disabled="isSaving || isDeleting"
+              @click="handleDelete"
+            >
+              {{ isDeleting ? t('eventView.deleting') : t('eventView.delete') }}
+            </button>
 
-          <button
-            type="button"
-            class="action-btn primary"
-            :disabled="isSaving || isDeleting"
-            @click="handleSubmit"
-          >
-            {{ buttonText }}
-          </button>
-        </template>
+            <button
+              v-if="isCreateMode || isEditMode"
+              type="button"
+              class="action-btn secondary"
+              :disabled="isSaving || isDeleting"
+              @click="handleCancel"
+            >
+              {{ t('eventView.cancel') }}
+            </button>
 
-        <!-- NON-OWNER ACTIONS -->
-        <template v-else>
-          <button
-            type="button"
-            class="action-btn"
-            :class="event?.is_attending ? 'secondary-danger' : 'primary'"
-            :disabled="isJoining"
-            @click="handleJoin"
-          >
-            {{ attendButtonText }}
-          </button>
+            <button
+              type="button"
+              class="action-btn primary"
+              :disabled="isSaving || isDeleting"
+              @click="handleSubmit"
+            >
+              {{ buttonText }}
+            </button>
+          </template>
+
+          <!-- NON-OWNER ACTIONS -->
+          <template v-else>
+            <button
+              type="button"
+              class="action-btn"
+              :class="event?.is_attending ? 'secondary-danger' : 'primary'"
+              :disabled="isJoining"
+              @click="handleJoin"
+            >
+              {{ attendButtonText }}
+            </button>
+          </template>
         </template>
       </div>
     </header>
 
     <!-- LOADING STATE -->
-    <div v-if="isLoading" class="loading-state">Loading event...</div>
+    <div v-if="isLoading" class="loading-state">{{ t('eventView.loadingEvent') }}</div>
 
     <!-- FULL ERROR CARD (Shown when fetch fails or event missing) -->
     <div v-else-if="errorMessage && !event && !isCreateMode" class="error-card">
@@ -282,21 +274,21 @@ async function handleJoin() {
           <line x1="12" y1="16" x2="12.01" y2="16"></line>
         </svg>
       </div>
-      <h3>Unable to load event</h3>
+      <h3>{{ t('eventView.unableToLoadEvent') }}</h3>
       <p>{{ errorMessage }}</p>
       <button type="button" class="action-btn secondary" @click="handleGoBack">
-        Return to Events
+        {{ t('eventView.returnToEvents') }}
       </button>
     </div>
 
     <!-- MAIN CONTENT CONTAINER -->
     <div v-else class="event-content">
-      <!-- INLINE ERROR BANNER (For non-fatal action failures like join/delete/save) -->
+      <!-- INLINE ERROR BANNER -->
       <div v-if="errorMessage && (event || isCreateMode)" class="inline-error-message">
         {{ errorMessage }}
       </div>
 
-      <EventDetails v-if="!isCreateMode && !isEditMode && event" :event="event" />
+      <EventDetails v-if="!isCreateMode && (!isEditMode || !isOwner) && event" :event="event" />
       <EventForm v-else-if="isCreateMode || isEditMode" ref="eventForm" :editable="true" />
     </div>
   </section>
@@ -311,8 +303,28 @@ async function handleJoin() {
   color: var(--color-text);
 }
 
-.top-nav {
-  margin-bottom: 1.25rem;
+.event-header {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.header-left {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.header-title {
+  text-align: center;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.6rem;
 }
 
 /* Highly visible button styling */
@@ -320,12 +332,12 @@ async function handleJoin() {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.5rem 1rem;
+  padding: 0.5rem 0.9rem;
   border-radius: 0.75rem;
   border: 1px solid rgba(255, 255, 255, 0.12);
   background: rgba(255, 255, 255, 0.05);
   color: var(--color-text);
-  font-size: 0.9rem;
+  font-size: 0.88rem;
   font-weight: 600;
   cursor: pointer;
   backdrop-filter: blur(8px);
@@ -356,40 +368,12 @@ async function handleJoin() {
   outline-offset: 2px;
 }
 
-.event-header {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 1rem 1.5rem;
-  margin-bottom: 2rem;
-}
-
-.eyebrow {
-  margin: 0 0 0.25rem;
-  color: var(--color-primary, #14b8a6);
-  font-size: 0.75rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-
 .event-header h1 {
   margin: 0;
-  font-size: clamp(1.5rem, 3vw, 1.85rem);
+  font-size: clamp(1.5rem, 2.5vw, 2rem);
   font-weight: 700;
   line-height: 1.2;
-}
-
-.subtitle {
-  margin: 0.35rem 0 0;
-  color: var(--color-text-muted, #9ca3af);
-  font-size: 0.95rem;
-}
-
-.header-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
+  white-space: nowrap;
 }
 
 .action-btn {
@@ -441,7 +425,6 @@ async function handleJoin() {
   color: var(--color-text-muted);
 }
 
-/* Designed Empty State Card for initial fetch failures */
 .error-card {
   display: flex;
   flex-direction: column;
@@ -486,7 +469,6 @@ async function handleJoin() {
   max-width: 400px;
 }
 
-/* Banner layout for minor submit/join errors when event data is active */
 .inline-error-message {
   margin-bottom: 1.25rem;
   padding: 0.75rem 1rem;
@@ -497,12 +479,33 @@ async function handleJoin() {
   font-size: 0.9rem;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 568px) {
   .event-header {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas:
+      "left right"
+      "title title";
     gap: 0.85rem;
   }
 
+  .header-left {
+    grid-area: left;
+  }
+
+  .header-title {
+    grid-area: title;
+  }
+
+  .header-actions {
+    grid-area: right;
+  }
+
+  .event-header h1 {
+    white-space: normal;
+  }
+}
+
+@media (max-width: 480px) {
   .header-actions {
     width: 100%;
   }

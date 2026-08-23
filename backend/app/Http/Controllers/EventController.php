@@ -45,7 +45,8 @@ class EventController extends Controller
                 $query->where(function ($q) use ($user) {
                     $q->where('public', true);
                     if ($user) {
-                        $q->orWhereHas('invites', fn($inv) => $inv->where('users.id', $user->id));
+                        $q->orWhere('user_id', $user->id)
+                        ->orWhereHas('invites', fn($inv) => $inv->where('users.id', $user->id));
                     }
                 });
             })

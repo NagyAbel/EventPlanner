@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import Event from '@/components/Event.vue'
 import Pagination from '@/components/Pagination.vue'
 import { useEventStore } from '@/stores/event'
@@ -14,6 +15,7 @@ const props = withDefaults(
 )
 
 const eventStore = useEventStore()
+const { t } = useI18n()
 
 const currentPage = ref(1)
 const totalPages = ref(1)
@@ -27,12 +29,12 @@ const displayedEvents = computed(() => {
 const emptyStateMessage = computed(() => {
   switch (props.tab) {
     case 'joined-events':
-      return "You haven't joined any events yet."
+      return t('profileEvents.noJoinedEvents')
     case 'invited-events':
-      return "You haven't been invited to any events yet."
+      return t('profileEvents.noInvitedEvents')
     case 'my-events':
     default:
-      return "You haven't created any events yet."
+      return t('profileEvents.noCreatedEvents')
   }
 })
 
@@ -81,7 +83,7 @@ onMounted(() => {
       <Transition name="fade-switch" mode="out-in">
         <!-- LOADING STATE -->
         <div v-if="eventStore.loading" key="loading" class="state-container">
-          <p class="state-text">Loading events...</p>
+          <p class="state-text">{{ t('profileEvents.loading') }}</p>
         </div>
 
         <!-- EMPTY STATE -->
