@@ -17,6 +17,9 @@ const router = createRouter({
     {
       path: '/auth',
       component: UserAuth,
+      meta: {
+        requiresGuest: true,
+      },
     },
     {
       path: '/profile',
@@ -43,9 +46,18 @@ router.beforeEach(async (to) => {
   // Restore the Sanctum session on the first navigation.
   await auth.ensureInitialized()
 
+  // Protect private routes from guests
   if (to.meta.requiresAuth && !auth.isAuthenticated) {
     return {
       path: '/auth',
+      query: { redirect: to.fullPath },
+    }
+  }
+
+  // Prevent authenticated users from visiting guest-only routes
+  if (to.meta.requiresGuest && auth.isAuthenticated) {
+    return {
+      path: '/',
     }
   }
 

@@ -56,11 +56,18 @@ const buttonText = computed(() => {
   return 'Edit'
 })
 
-// Dynamic text for non-owner action button based on attendance
 const attendButtonText = computed(() => {
   if (isJoining.value) return 'Updating...'
   return event.value?.is_attending ? 'Leave Event' : 'Join Event'
 })
+
+function handleGoBack() {
+  if (window.history.length > 1) {
+    router.back()
+  } else {
+    router.push('/events')
+  }
+}
 
 onMounted(async () => {
   if (isCreateMode.value) {
@@ -74,23 +81,14 @@ onMounted(async () => {
     return
   }
 
-  const cachedEvent = sessionStorage.getItem(`event:${eventId.value}`)
-  if (cachedEvent) {
-    try {
-      event.value = JSON.parse(cachedEvent)
-    } catch (e) {
-      console.warn('Failed to parse cached event data', e)
-    }
-  }
-
   try {
-    const fetchedEvent = await eventStore.fetchEvent(eventId.value)
-    event.value = fetchedEvent
+    // Let Pinia handle fetching and returning the event
+    event.value = await eventStore.fetchEvent(eventId.value)
+    errorMessage.value = ''
   } catch (error) {
     console.error('Failed to load event:', error)
-    if (!event.value) {
-      errorMessage.value = 'Failed to load event.'
-    }
+    event.value = null
+    errorMessage.value = 'Failed to load event. The event may have been removed or is temporarily unavailable.'
   } finally {
     isLoading.value = false
     if (isEditMode.value && event.value) {
@@ -146,7 +144,7 @@ function handleCancel() {
   if (isEditMode.value) {
     router.push({ path: route.path, query: {} })
   } else {
-    router.back()
+    handleGoBack()
   }
 }
 
@@ -161,7 +159,7 @@ async function handleDelete() {
 
   try {
     await eventStore.deleteEvent(eventId.value)
-    router.back()  
+    handleGoBack()
   } catch (error) {
     console.error('Failed to delete event:', error)
     errorMessage.value = 'Failed to delete event.'
@@ -190,6 +188,25 @@ async function handleJoin() {
 
 <template>
   <section class="event-page">
+    <!-- PROMINENT BACK BUTTON -->
+    <div class="top-nav">
+      <button type="button" class="back-btn" @click="handleGoBack">
+        <svg
+          class="back-icon"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <line x1="19" y1="12" x2="5" y2="12"></line>
+          <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+        <span>Back</span>
+      </button>
+    </div>
+
     <header class="event-header">
       <div>
         <p class="eyebrow">{{ eyebrowText }}</p>
@@ -197,7 +214,7 @@ async function handleJoin() {
         <p class="subtitle">{{ subtitleText }}</p>
       </div>
 
-      <div class="header-actions" v-if="!isLoading">
+      <div class="header-actions" v-if="!isLoading && (event || isCreateMode)">
         <!-- OWNER ACTIONS -->
         <template v-if="isOwner">
           <button
@@ -245,18 +262,42 @@ async function handleJoin() {
       </div>
     </header>
 
-    <div v-if="errorMessage" class="error-message">
-      {{ errorMessage }}
+    <!-- LOADING STATE -->
+    <div v-if="isLoading" class="loading-state">Loading event...</div>
+
+    <!-- FULL ERROR CARD (Shown when fetch fails or event missing) -->
+    <div v-else-if="errorMessage && !event && !isCreateMode" class="error-card">
+      <div class="error-icon-wrapper">
+        <svg
+          class="error-icon"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="8" x2="12" y2="12"></line>
+          <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+      </div>
+      <h3>Unable to load event</h3>
+      <p>{{ errorMessage }}</p>
+      <button type="button" class="action-btn secondary" @click="handleGoBack">
+        Return to Events
+      </button>
     </div>
 
     <!-- MAIN CONTENT CONTAINER -->
-    <div class="event-content">
-      <div v-if="isLoading" class="loading-state">Loading event...</div>
+    <div v-else class="event-content">
+      <!-- INLINE ERROR BANNER (For non-fatal action failures like join/delete/save) -->
+      <div v-if="errorMessage && (event || isCreateMode)" class="inline-error-message">
+        {{ errorMessage }}
+      </div>
 
-      <template v-else>
-        <EventDetails v-if="!isCreateMode && !isEditMode && event" :event="event" />
-        <EventForm v-else-if="isCreateMode || isEditMode" ref="eventForm" :editable="true" />
-      </template>
+      <EventDetails v-if="!isCreateMode && !isEditMode && event" :event="event" />
+      <EventForm v-else-if="isCreateMode || isEditMode" ref="eventForm" :editable="true" />
     </div>
   </section>
 </template>
@@ -270,11 +311,56 @@ async function handleJoin() {
   color: var(--color-text);
 }
 
+.top-nav {
+  margin-bottom: 1.25rem;
+}
+
+/* Highly visible button styling */
+.back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--color-text);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.back-icon {
+  width: 1.1rem;
+  height: 1.1rem;
+  color: var(--color-primary, #14b8a6);
+  transition: transform 0.2s ease;
+}
+
+.back-btn:hover {
+  background: rgba(20, 184, 166, 0.12);
+  border-color: rgba(20, 184, 166, 0.4);
+  color: var(--color-primary, #14b8a6);
+  transform: translateX(-3px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.back-btn:active {
+  transform: translateX(-1px);
+}
+
+.back-btn:focus-visible {
+  outline: 2px solid var(--color-primary, #14b8a6);
+  outline-offset: 2px;
+}
+
 .event-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  gap: 1.5rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 1rem 1.5rem;
   margin-bottom: 2rem;
 }
 
@@ -289,8 +375,9 @@ async function handleJoin() {
 
 .event-header h1 {
   margin: 0;
-  font-size: 1.75rem;
+  font-size: clamp(1.5rem, 3vw, 1.85rem);
   font-weight: 700;
+  line-height: 1.2;
 }
 
 .subtitle {
@@ -301,8 +388,8 @@ async function handleJoin() {
 
 .header-actions {
   display: flex;
+  align-items: center;
   gap: 0.6rem;
-  flex-shrink: 0;
 }
 
 .action-btn {
@@ -313,6 +400,7 @@ async function handleJoin() {
   cursor: pointer;
   font: inherit;
   font-weight: 600;
+  white-space: nowrap;
   transition: opacity 0.15s ease, background-color 0.15s ease;
 }
 
@@ -353,21 +441,75 @@ async function handleJoin() {
   color: var(--color-text-muted);
 }
 
-.error-message {
+/* Designed Empty State Card for initial fetch failures */
+.error-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 3.5rem 1.5rem;
+  border-radius: 1rem;
+  background: rgba(244, 63, 94, 0.04);
+  border: 1px solid rgba(244, 63, 94, 0.2);
+  margin-top: 1rem;
+}
+
+.error-icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.25rem;
+  height: 3.25rem;
+  border-radius: 50%;
+  background: rgba(244, 63, 94, 0.12);
+  color: #f43f5e;
+  margin-bottom: 1rem;
+}
+
+.error-icon {
+  width: 1.75rem;
+  height: 1.75rem;
+}
+
+.error-card h3 {
+  margin: 0 0 0.4rem;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.error-card p {
+  margin: 0 0 1.5rem;
+  color: var(--color-text-muted, #9ca3af);
+  font-size: 0.95rem;
+  max-width: 400px;
+}
+
+/* Banner layout for minor submit/join errors when event data is active */
+.inline-error-message {
   margin-bottom: 1.25rem;
   padding: 0.75rem 1rem;
   border-radius: 0.6rem;
   background: rgba(244, 63, 94, 0.1);
+  border: 1px solid rgba(244, 63, 94, 0.2);
   color: #fda4af;
+  font-size: 0.9rem;
 }
 
-@media (max-width: 700px) {
+@media (max-width: 640px) {
+  .event-header {
+    grid-template-columns: 1fr;
+    gap: 0.85rem;
+  }
+
   .header-actions {
     width: 100%;
   }
 
   .action-btn {
     flex: 1;
+    text-align: center;
   }
 }
 </style>

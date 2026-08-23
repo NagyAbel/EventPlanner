@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import UserSettings from '@/components/UserSettings.vue'
@@ -6,7 +6,9 @@ import ProfileEvents from '@/components/ProfileEvents.vue'
 
 const router = useRouter()
 
-const activeTab = ref('my-events')
+// 1. Updated type definition to include 'invited-events'
+type ProfileTab = 'my-events' | 'joined-events' | 'invited-events'
+const activeTab = ref<ProfileTab>('my-events')
 
 function createEvent() {
   router.push('/events/create')
@@ -46,6 +48,18 @@ function createEvent() {
             @click="activeTab = 'joined-events'"
           >
             Joined Events
+          </button>
+
+          <!-- 2. Added Invited Events tab -->
+          <button
+            type="button"
+            class="events-tab"
+            :class="{ active: activeTab === 'invited-events' }"
+            role="tab"
+            :aria-selected="activeTab === 'invited-events'"
+            @click="activeTab = 'invited-events'"
+          >
+            Invited Events
           </button>
         </div>
 

@@ -19,6 +19,7 @@ const defaultEvent: EventModel = {
   description: '',
   public: true,
   invited_emails: [],
+  attendee_count:0,
   is_attending:false,
   owner: null,
 }

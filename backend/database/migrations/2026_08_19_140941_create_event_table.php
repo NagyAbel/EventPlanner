@@ -14,18 +14,15 @@ return new class extends Migration
             $table->foreignId('user_id')
                 ->constrained()
                 ->cascadeOnDelete();
-
             $table->string('name');
             $table->text('description')->nullable();
             $table->string('type');
-
             $table->dateTime('date');
-
             $table->string('city');
             $table->string('location');
             $table->boolean('public');            
             $table->string('cover_image')->nullable();
-
+            $table->unsignedInteger('attendee_count')->default(0);            
             $table->timestamps();
         });
     }

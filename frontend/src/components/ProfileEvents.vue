@@ -6,7 +6,7 @@ import { useEventStore } from '@/stores/event'
 
 const props = withDefaults(
   defineProps<{
-    tab?: 'my-events' | 'joined-events'
+    tab?: 'my-events' | 'joined-events' | 'invited-events'
   }>(),
   {
     tab: 'my-events',
@@ -20,9 +20,20 @@ const totalPages = ref(1)
 
 // Dynamic array selector based on active tab
 const displayedEvents = computed(() => {
-  return props.tab === 'joined-events'
-    ? eventStore.joinedEvents
-    : eventStore.userEvents
+  return eventStore.events
+})
+
+// Dynamic empty state message
+const emptyStateMessage = computed(() => {
+  switch (props.tab) {
+    case 'joined-events':
+      return "You haven't joined any events yet."
+    case 'invited-events':
+      return "You haven't been invited to any events yet."
+    case 'my-events':
+    default:
+      return "You haven't created any events yet."
+  }
 })
 
 async function loadPage(page: number) {
@@ -31,10 +42,16 @@ async function loadPage(page: number) {
   currentPage.value = page
 
   try {
-    const fetchAction =
-      props.tab === 'joined-events'
-        ? eventStore.fetchJoinedEvents
-        : eventStore.fetchUserEvents
+    // Select the appropriate fetch action based on the tab prop
+    let fetchAction: (page?: number) => Promise<any>
+
+    if (props.tab === 'joined-events') {
+      fetchAction = eventStore.fetchJoinedEvents
+    } else if (props.tab === 'invited-events') {
+      fetchAction = eventStore.fetchInvitedEvents
+    } else {
+      fetchAction = eventStore.fetchUserEvents
+    }
 
     const response = await fetchAction(page)
     totalPages.value = response.last_page || 1
@@ -73,13 +90,7 @@ onMounted(() => {
           key="empty"
           class="state-container"
         >
-          <p class="state-text">
-            {{
-              tab === 'joined-events'
-                ? "You haven't joined any events yet."
-                : "You haven't created any events yet."
-            }}
-          </p>
+          <p class="state-text">{{ emptyStateMessage }}</p>
         </div>
 
         <!-- EVENTS GRID -->

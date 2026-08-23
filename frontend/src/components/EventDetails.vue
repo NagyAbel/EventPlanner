@@ -1,20 +1,17 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { EventModel } from '@/stores/event'
+import { useAuthStore } from '@/stores/auth'
 
 const props = defineProps<{
   event: EventModel
 }>()
 
-const MAX_DISPLAY_GUESTS = 3
+const authStore = useAuthStore()
 
-const visibleGuests = computed(() => {
-  return props.event.invited_emails?.slice(0, MAX_DISPLAY_GUESTS) || []
-})
-
-const remainingGuestsCount = computed(() => {
-  const total = props.event.invited_emails?.length || 0
-  return Math.max(0, total - MAX_DISPLAY_GUESTS)
+const isOwner = computed(() => {
+  if (!props.event?.owner || !authStore.user) return false
+  return Number(props.event.owner.id) === Number(authStore.user.id)
 })
 
 const formattedDate = (date: string) => {
@@ -72,7 +69,7 @@ const visibilityLabel = (isPublic: EventModel['public']) => {
           <div class="event-section">
             <div class="section-heading">
               <span class="section-icon">📅</span>
-              <div>
+              <div class="section-body">
                 <p class="section-label">Date & Time</p>
                 <p class="section-value">{{ formattedDate(props.event.date) }}</p>
                 <p class="section-secondary">{{ formattedTime(props.event.date) }}</p>
@@ -83,10 +80,24 @@ const visibilityLabel = (isPublic: EventModel['public']) => {
           <div class="event-section">
             <div class="section-heading">
               <span class="section-icon">📍</span>
-              <div>
+              <div class="section-body">
                 <p class="section-label">Location</p>
-                <p class="section-value">{{ props.event.location }}</p>
-                <p class="section-secondary">{{ props.event.city }}</p>
+                <p class="section-value" :title="props.event.location">{{ props.event.location }}</p>
+                <p class="section-secondary" :title="props.event.city">{{ props.event.city }}</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Attendees Section -->
+          <div class="event-section">
+            <div class="section-heading">
+              <span class="section-icon">👥</span>
+              <div class="section-body">
+                <p class="section-label">Attendees</p>
+                <p class="section-value">{{ props.event.attendee_count ?? 0 }} going</p>
+                <p v-if="!isOwner" class="section-secondary">
+                  {{ props.event.is_attending ? 'You are going' : 'Not attending' }}
+                </p>
               </div>
             </div>
           </div>
@@ -107,14 +118,14 @@ const visibilityLabel = (isPublic: EventModel['public']) => {
             <div class="owner-avatar">
               {{ props.event.owner.name?.charAt(0).toUpperCase() }}
             </div>
-            <div>
-              <p class="owner-name">{{ props.event.owner.name }}</p>
-              <p class="owner-email">{{ props.event.owner.email }}</p>
+            <div class="owner-info">
+              <p class="owner-name" :title="props.event.owner.name">{{ props.event.owner.name }}</p>
+              <p class="owner-email" :title="props.event.owner.email">{{ props.event.owner.email }}</p>
             </div>
           </div>
         </div>
 
-        <!-- Truncated Guest List -->
+        <!-- Scrollable Guest List -->
         <div v-if="!props.event.public" class="info-card">
           <div class="invite-heading">
             <p class="section-label">Invited guests</p>
@@ -122,13 +133,9 @@ const visibilityLabel = (isPublic: EventModel['public']) => {
           </div>
 
           <ul v-if="props.event.invited_emails?.length" class="guest-list">
-            <li v-for="email in visibleGuests" :key="email">
+            <li v-for="email in props.event.invited_emails" :key="email">
               <span class="guest-avatar">{{ email.charAt(0).toUpperCase() }}</span>
-              <span class="guest-email">{{ email }}</span>
-            </li>
-
-            <li v-if="remainingGuestsCount > 0" class="more-guests">
-              +{{ remainingGuestsCount }} more...
+              <span class="guest-email" :title="email">{{ email }}</span>
             </li>
           </ul>
 
@@ -230,6 +237,7 @@ const visibilityLabel = (isPublic: EventModel['public']) => {
   color: white;
   font-size: clamp(1.7rem, 4vw, 2.4rem);
   line-height: 1.1;
+  word-break: break-word;
 }
 
 .event-type {
@@ -257,10 +265,11 @@ const visibilityLabel = (isPublic: EventModel['public']) => {
   min-width: 0;
 }
 
-/* Date & Location Grid Row */
+/* Date, Location & Attendees Grid Row */
 .event-row {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: start;
   gap: 1.5rem;
   padding-bottom: 1.25rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.07);
@@ -274,6 +283,12 @@ const visibilityLabel = (isPublic: EventModel['public']) => {
   display: flex;
   align-items: flex-start;
   gap: 0.85rem;
+  min-width: 0;
+}
+
+.section-body {
+  min-width: 0;
+  flex: 1;
 }
 
 .section-icon {
@@ -302,15 +317,18 @@ const visibilityLabel = (isPublic: EventModel['public']) => {
   color: var(--color-text);
   font-size: 0.95rem;
   font-weight: 600;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.35;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .section-secondary {
   margin: 0.2rem 0 0;
   color: var(--color-text-muted);
   font-size: 0.85rem;
+  line-height: 1.35;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 /* Description */
@@ -324,6 +342,8 @@ const visibilityLabel = (isPublic: EventModel['public']) => {
   font-size: 0.95rem;
   line-height: 1.7;
   white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 /* Sidebar */
@@ -331,6 +351,7 @@ const visibilityLabel = (isPublic: EventModel['public']) => {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+  min-width: 0;
 }
 
 .info-card {
@@ -338,6 +359,7 @@ const visibilityLabel = (isPublic: EventModel['public']) => {
   border: 1px solid rgba(255, 255, 255, 0.07);
   border-radius: 0.8rem;
   background: rgba(255, 255, 255, 0.025);
+  min-width: 0;
 }
 
 /* Owner */
@@ -346,6 +368,12 @@ const visibilityLabel = (isPublic: EventModel['public']) => {
   align-items: center;
   gap: 0.7rem;
   margin-top: 0.7rem;
+  min-width: 0;
+}
+
+.owner-info {
+  min-width: 0;
+  flex: 1;
 }
 
 .owner-avatar,
@@ -370,12 +398,18 @@ const visibilityLabel = (isPublic: EventModel['public']) => {
   color: var(--color-text);
   font-size: 0.85rem;
   font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .owner-email {
   margin: 0.15rem 0 0;
   color: var(--color-text-muted);
   font-size: 0.72rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Guest List */
@@ -400,11 +434,32 @@ const visibilityLabel = (isPublic: EventModel['public']) => {
 }
 
 .guest-list {
-  display: grid;
-  gap: 0.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 190px;
   margin: 0.7rem 0 0;
-  padding: 0;
+  padding: 0 0.25rem 0 0;
+  overflow-y: auto;
   list-style: none;
+}
+
+/* Custom Scrollbar for Guest List */
+.guest-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.guest-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.guest-list::-webkit-scrollbar-thumb {
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.guest-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
 }
 
 .guest-list li {
@@ -428,13 +483,6 @@ const visibilityLabel = (isPublic: EventModel['public']) => {
   white-space: nowrap;
 }
 
-.more-guests {
-  padding-left: 2.25rem;
-  color: var(--color-text-muted);
-  font-size: 0.75rem;
-  font-style: italic;
-}
-
 .empty-guests {
   margin: 0.6rem 0 0;
   color: var(--color-text-muted);
@@ -442,6 +490,12 @@ const visibilityLabel = (isPublic: EventModel['public']) => {
 }
 
 /* Responsive */
+@media (max-width: 950px) {
+  .event-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 800px) {
   .event-content {
     grid-template-columns: 1fr;

@@ -24,13 +24,13 @@ class EventResource extends JsonResource
                 ? Storage::disk('public')->url($this->cover_image)
                 : null,
             'attendee_count' => $this->attendee_count,
-            'invited_emails' => $this->whenLoaded('invite_users', function () {
-                return $this->attendees->pluck('email');
+            'invited_emails' => $this->whenLoaded('invites', function () {
+                return $this->invites->pluck('email');
             }),
 
-            'is_attending'   => $user && $this->relationLoaded('attendees') 
-                ? $this->attendees->contains('id', $user->id) 
-                : false,
+            'is_attending' =>  $user ? (isset($this->is_attending) ? (bool) $this->is_attending 
+                : $this->attendees()->where('user_id', $user->id)->exists()) : false,
+
             'owner'=> $this->whenLoaded('owner', function () {
                 return [
                     'id'=>$this->owner->id,

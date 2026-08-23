@@ -18,7 +18,6 @@ export const useAuthStore = defineStore('auth', () => {
   async function fetchUser() {
     try {
       const response = await apiRequest<{ user: User }>('/api/user')
-
       user.value = response.user
     } catch {
       user.value = null
@@ -28,39 +27,53 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function ensureInitialized() {
-    if (initialized.value) {
-      return
+    if (!initialized.value) {
+      await fetchUser()
     }
-
-    await fetchUser()
   }
 
   async function login(email: string, password: string) {
     loading.value = true
-
     try {
       await authRequest('/api/user/auth', {
         method: 'POST',
-        body: JSON.stringify({
-          email,
-          password,
-        }),
+        body: JSON.stringify({ email, password }),
       })
-
       await fetchUser()
     } finally {
       loading.value = false
     }
   }
 
-  async function signup(
-    name: string,
-    email: string,
-    password: string,
-    passwordConfirmation: string,
-  ) {
+  async function logout() {
     loading.value = true
+    try {
+      // Use authRequest for CSRF protection
+      await authRequest('/api/user/logout', { method: 'POST' })
+    } catch {
+      // Ignore errors on logout (e.g. session already invalidated)
+    } finally {
+      user.value = null
+      initialized.value = true
+      loading.value = false
+    }
+  }
 
+  async function updateName(name: string) {
+    loading.value = true
+    try {
+      // Switched to authRequest for state mutation
+      const response = await authRequest<{ user: User }>('/api/user/name', {
+        method: 'POST',
+        body: JSON.stringify({ name }),
+      })
+      user.value = response.user
+    } finally {
+      loading.value = false
+    }
+  }
+  async function signup(name: string,email: string,password: string,passwordConfirmation: string,) {
+    loading.value = true
     try {
       await authRequest('/api/user/signup', {
         method: 'POST',
@@ -78,35 +91,14 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  async function logout() {
-    loading.value = true
-
-    try {
-      await apiRequest('/api/user/logout', {
-        method: 'POST',
-      })
-
-      user.value = null
-    } finally {
-      loading.value = false
-    }
+  // Single global event listener
+  function handleUnauthorized() {
+    user.value = null
+    initialized.value = true
   }
-  async function updateName(name: string) {
-    loading.value = true
 
-    try {
-        const response = await apiRequest<{ user: User }>('/api/user/name', {
-            method: 'POST',
-        body: JSON.stringify({
-            name,
-        }),
-        })
+  window.addEventListener('auth:unauthorized', handleUnauthorized)
 
-        user.value = response.user
-    } finally {
-        loading.value = false
-    }
-  }
   return {
     user,
     loading,
@@ -115,8 +107,8 @@ export const useAuthStore = defineStore('auth', () => {
     fetchUser,
     ensureInitialized,
     login,
-    signup,
     logout,
+    signup,
     updateName,
   }
 })

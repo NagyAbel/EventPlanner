@@ -11,15 +11,15 @@ class SearchEventRequest extends FormRequest
         return true;
     }
 
-    public function rules(): array
+   public function rules(): array
     {
         return [
+            'scope'    => ['sometimes', 'string', 'in:public,own,joined,invited'],
             'search'   => ['sometimes', 'nullable', 'string', 'max:255'],
             'city'     => ['sometimes', 'nullable', 'string', 'max:255'],
             'date'     => ['sometimes', 'nullable', 'date'],
             'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
-            'page' => ['sometimes', 'integer', 'min:1'],
-
+            'page'     => ['sometimes', 'integer', 'min:1'],
         ];
     }
 }

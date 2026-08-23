@@ -13,7 +13,7 @@ interface EventCardProps {
   location: string
   cover_image: string
   type: string
-  description: string
+  description: string | null,
 }
 
 const props = defineProps<EventCardProps>()

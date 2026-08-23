@@ -17,11 +17,39 @@ use Illuminate\Support\Facades\DB;
 use App\Http\Requests\SearchEventRequest;
 class EventController extends Controller
 {
-    public function list(SearchEventRequest $request)
+    public function index(SearchEventRequest $request)
     {
         $perPage = min((int) $request->input('per_page', 10), 100);
-        $page = (int) $request->input('page', 1);
-        $events = Event::with('owner','attendees')
+        $user = auth('sanctum')->user();;
+        $scope = $request->input('scope', 'public');
+    
+        $events = Event::query()->with('owner')
+            ->when($user, function ($query) use ($user) {
+                $query->withExists(['attendees as is_attending' => function ($q) use ($user) {
+                    $q->where('user_id', $user->id);
+                }]);
+            })
+            //Events created by the user
+            ->when($scope === 'own' && $user, function ($query) use ($user) {
+                $query->where('user_id', $user->id);
+            })
+            //Events the user is attending
+            ->when($scope === 'joined' && $user, function ($query) use ($user) {
+                $query->whereHas('attendees', fn($q) => $q->where('user_id', $user->id));
+            })
+            ->when($scope === 'invited' && $user, function ($query) use ($user) {
+                $query->whereHas('invites', fn($q) => $q->where('user_id', $user->id));
+            })            
+            //Default public/invited discovery list
+            ->when($scope === 'public', function ($query) use ($user) {
+                $query->where(function ($q) use ($user) {
+                    $q->where('public', true);
+                    if ($user) {
+                        $q->orWhereHas('invites', fn($inv) => $inv->where('users.id', $user->id));
+                    }
+                });
+            })
+            // General Filters
             ->when($request->filled('search'), function ($query) use ($request) {
                 $search = $request->input('search');
                 $query->where(function ($q) use ($search) {
@@ -29,34 +57,8 @@ class EventController extends Controller
                     ->orWhere('description', 'like', "%{$search}%");
                 });
             })
-            ->when($request->filled('city'), function ($query) use ($request) {
-                $query->where('city', $request->input('city'));
-            })
-            ->when($request->filled('date'), function ($query) use ($request) {
-                $query->whereDate('date', $request->input('date'));
-            })
-            ->orderByDesc('date')
-            ->orderByDesc('id')
-            ->paginate(
-                perPage: $perPage,
-                pageName: 'page',
-                page: $page
-            );
-            return response()->json([
-                'data'         => EventResource::collection($events->items()),
-                'current_page' => $events->currentPage(),
-                'last_page'    => $events->lastPage(),
-                'per_page'     => $events->perPage(),
-                'total'        => $events->total(),
-            ]);    
-    }
-
-    public function own(Request $request)
-    {
-        $perPage = min((int) $request->input('per_page', 10), 100);
-
-        $events = Event::with(['owner', 'attendees'])
-            ->where('user_id', $request->user()->id)
+            ->when($request->filled('city'), fn($q) => $q->where('city', $request->input('city')))
+            ->when($request->filled('date'), fn($q) => $q->whereDate('date', $request->input('date')))
             ->orderByDesc('date')
             ->orderByDesc('id')
             ->paginate($perPage);
@@ -69,31 +71,17 @@ class EventController extends Controller
             'total'        => $events->total(),
         ]);
     }
-
-    public function joined(Request $request){
-        $perPage = min((int) $request->input('per_page', 20), 100);
-
-        $events = Event::with(['owner', 'attendees'])
-        ->whereHas('attendees', function ($query) use ($request) {
-            $query->where('user_id', $request->user()->id);
-        })
-        ->orderByDesc('date')
-        ->orderByDesc('id')
-        ->paginate($perPage);
-
-        return response()->json([
-            'data'         => EventResource::collection($events->items()),
-            'current_page' => $events->currentPage(),
-            'last_page'    => $events->lastPage(),
-            'per_page'     => $events->perPage(),
-            'total'        => $events->total(),
-        ]);
-    }
-
     public function show(Event $event){
-        $event->load('owner','attendees');
+        $user = auth('sanctum')->user();
 
-        return new EventResource($event);
+        if (!$event->public) {
+            $isOwner = $user && (int) $event->user_id === (int) $user->id;
+            $isInvited = $user && $event->invites()->where('users.id', $user->id)->exists();
+
+            abort_unless($isOwner || $isInvited, 403, 'This event is private.');
+        }
+
+        return new EventResource($event->load('owner', 'invites'));
     }
 
     public function create(CreateEventRequest $request)
@@ -104,7 +92,6 @@ class EventController extends Controller
             $oldImage = $request->cover_image;
 
             $manager = ImageManager::usingDriver(Driver::class);
-            //throw new \Exception('Debug error triggered in EventController::update');
             $image = $manager->decodePath($request->file('cover_image')->getRealPath());
             $image->scaleDown(
                 width: 1920,
@@ -162,10 +149,8 @@ class EventController extends Controller
                 $userIds = User::whereIn('email', $request->input('invited_emails', []))
                     ->pluck('id');
 
-                $event->attendees()->sync($userIds);
+                $event->invites()->sync($userIds);
             }
-
-            $event->load(['owner', 'attendees']);
 
             return new EventResource($event);
         });
@@ -189,35 +174,63 @@ class EventController extends Controller
         ]);
     }
 
-    public function attend(Request $request, Event $event){
+    public function attend(Request $request, Event $event)
+    {
         $user = $request->user();
 
-        if ((int) $event->user_id === (int) $user->id) {
-            return response()->json(['message' => 'You are the creator of this event.',], 422);
-        }
+        $result = DB::transaction(function () use ($event, $user) {
 
-        if (!$event->public) {
-            $event->loadMissing('invites');
+            $event = Event::whereKey($event->id)
+                ->lockForUpdate()
+                ->firstOrFail();
 
-            $isInvited = $event->invites->contains(function ($attendee) use ($user) {
-                return $attendee->id === $user->id;
-            });
-
-            if (!$isInvited) {
-                return response()->json([
-                    'message' => 'You are not invited to this event.',
-                ], 403);
+            if ((int) $event->user_id === (int) $user->id) {
+                abort(422, 'You are the creator of this event.');
             }
-        }
 
-        $changes = $event->attendees()->toggle($user->id);
-    
-        $isAttending = count($changes['attached']) > 0;
+            if (!$event->public) {
+                $isInvited = $event->invites()
+                    ->where('users.id', $user->id)
+                    ->exists();
+
+                if (!$isInvited) {
+                    abort(403, 'You are not invited to this event.');
+                }
+            }
+
+            $changes = $event->attendees()->toggle($user->id);
+
+            $isAttending = count($changes['attached']) > 0;
+
+            $event->update([
+                'attendee_count' => $event->attendees()->count(),
+            ]);
+
+            return [
+                'event' => $event,
+                'is_attending' => $isAttending,
+            ];
+        });
+
+        $event = $result['event'];
+        $isAttending = $result['is_attending'];
+
+        $event->load('owner');
+
+        $event->loadExists([
+            'attendees as is_attending' => function ($query) use ($user) {
+                $query->where('user_id', $user->id);
+            },
+        ]);
 
         return response()->json([
-            'message' => $isAttending ? 'Successfully joined the event.' : 'Successfully left the event.',
+            'message' => $isAttending
+                ? 'Successfully joined the event.'
+                : 'Successfully left the event.',
+
             'attending' => $isAttending,
-            'event' => new EventResource($event->load(['owner', 'attendees'])),
+
+            'event' => new EventResource($event),
         ]);
     }
 }
