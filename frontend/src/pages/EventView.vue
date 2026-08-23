@@ -105,7 +105,6 @@ async function handleSubmit() {
   const isValid = eventForm.value?.validate()
   if (!isValid) return
 
-  
   errorMessage.value = ''
   const formData = eventForm.value?.get()
 
@@ -211,8 +210,9 @@ async function handleJoin() {
         <template v-if="!isLoading && (event || isCreateMode)">
           <!-- OWNER ACTIONS -->
           <template v-if="isOwner">
+            <!-- Delete button ONLY visible in Overview mode -->
             <button
-              v-if="!isCreateMode"
+              v-if="!isCreateMode && !isEditMode"
               type="button"
               class="action-btn danger"
               :disabled="isSaving || isDeleting"
@@ -221,6 +221,7 @@ async function handleJoin() {
               {{ isDeleting ? t('eventView.deleting') : t('eventView.delete') }}
             </button>
 
+            <!-- Cancel button ONLY visible in Create/Edit mode -->
             <button
               v-if="isCreateMode || isEditMode"
               type="button"
@@ -231,6 +232,7 @@ async function handleJoin() {
               {{ t('eventView.cancel') }}
             </button>
 
+            <!-- Submit / Edit toggle button -->
             <button
               type="button"
               class="action-btn primary"
@@ -260,7 +262,7 @@ async function handleJoin() {
     <!-- LOADING STATE -->
     <div v-if="isLoading" class="loading-state">{{ t('eventView.loadingEvent') }}</div>
 
-    <!-- FULL ERROR CARD (Shown when fetch fails or event missing) -->
+    <!-- FULL ERROR CARD -->
     <div v-else-if="errorMessage && !event && !isCreateMode" class="error-card">
       <div class="error-icon-wrapper">
         <svg
@@ -308,10 +310,11 @@ async function handleJoin() {
 
 .event-header {
   display: grid;
+  /* Equal 1fr outer columns ensure the center column is mathematically centered */
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
   gap: 1rem;
-  margin-bottom: 1rem;
+  margin-bottom: 1.5rem;
 }
 
 .header-left {
@@ -321,16 +324,18 @@ async function handleJoin() {
 
 .header-title {
   text-align: center;
+  min-width: 0;
 }
 
 .header-actions {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 0.6rem;
+  gap: 0.5rem;
+  flex-wrap: nowrap; /* Prevents Cancel/Save from splitting into vertical stack */
 }
 
-/* Highly visible button styling */
+/* Back Button */
 .back-btn {
   display: inline-flex;
   align-items: center;
@@ -345,6 +350,7 @@ async function handleJoin() {
   cursor: pointer;
   backdrop-filter: blur(8px);
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  white-space: nowrap;
 }
 
 .back-icon {
@@ -373,19 +379,22 @@ async function handleJoin() {
 
 .event-header h1 {
   margin: 0;
-  font-size: clamp(1.5rem, 2.5vw, 2rem);
+  font-size: clamp(1.25rem, 2.5vw, 1.8rem);
   font-weight: 700;
   line-height: 1.2;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .action-btn {
   border: none;
   border-radius: 0.6rem;
-  padding: 0.6rem 1.1rem;
+  padding: 0.55rem 0.9rem;
   color: var(--color-text);
   cursor: pointer;
   font: inherit;
+  font-size: 0.88rem;
   font-weight: 600;
   white-space: nowrap;
   transition: opacity 0.15s ease, background-color 0.15s ease;
@@ -482,40 +491,33 @@ async function handleJoin() {
   font-size: 0.9rem;
 }
 
-@media (max-width: 568px) {
+/* Mobile responsive adjustments */
+@media (max-width: 640px) {
   .event-header {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: auto 1fr;
     grid-template-areas:
       "left right"
       "title title";
-    gap: 0.85rem;
+    gap: 0.75rem;
   }
 
   .header-left {
     grid-area: left;
   }
 
-  .header-title {
-    grid-area: title;
-  }
-
   .header-actions {
     grid-area: right;
+    justify-content: flex-end;
+  }
+
+  .header-title {
+    grid-area: title;
+    text-align: center; /* Keep title centered even on mobile */
+    margin-top: 0.25rem;
   }
 
   .event-header h1 {
     white-space: normal;
-  }
-}
-
-@media (max-width: 480px) {
-  .header-actions {
-    width: 100%;
-  }
-
-  .action-btn {
-    flex: 1;
-    text-align: center;
   }
 }
 </style>

@@ -4,6 +4,8 @@ import { authRequest } from '@/services/api'
 import type { User } from '@/stores/auth'
 import type {
   EventModel,
+  EventTypeModel,
+  EventTypesResponse,
   CreateEventPayload,
   UpdateEventPayload,
   EventsResponse,
@@ -12,12 +14,28 @@ import type {
   FetchEventsOptions,
 } from './event.types'
 export type * from './event.types'
+
 export const useEventStore = defineStore('event', () => {
   const events = ref<EventModel[]>([])
+  const eventTypes = ref<EventTypeModel[]>([])
   const currentEvent = ref<EventModel | null>(null)
 
   const loading = ref(false)
   const error = ref<string | null>(null)
+
+  /**
+   * Fetch all available event types for select dropdowns or filters
+   */
+  async function fetchEventTypes() {
+    try {
+      const response = await authRequest<EventTypesResponse>('/api/event-types')
+      eventTypes.value = response.data
+      return response.data
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Failed to load event types.'
+      throw err
+    }
+  }
 
   /**
    * Unified method to fetch public, user-owned, or joined events
@@ -49,7 +67,7 @@ export const useEventStore = defineStore('event', () => {
       const response = await authRequest<EventsResponse>(`/api/event?${params.toString()}`)
       const pageEvents = response.data
 
-      events.value  = pageEvents
+      events.value = pageEvents
 
       return response
     } catch (err) {
@@ -71,7 +89,7 @@ export const useEventStore = defineStore('event', () => {
   }
 
   async function fetchInvitedEvents(page = 1){
-      return fetchEvents({ page, scope: 'invited' })
+    return fetchEvents({ page, scope: 'invited' })
   }
 
   async function fetchEvent(id: number) {
@@ -99,7 +117,7 @@ export const useEventStore = defineStore('event', () => {
       formData.append('name', payload.name)
       formData.append('date', payload.date)
       formData.append('location', payload.location)
-      formData.append('type', payload.type)
+      formData.append('event_type_id', payload.event_type_id.toString())
       formData.append('description', payload.description)
       formData.append('public', payload.public ? '1' : '0')
       formData.append('city', payload.city)
@@ -245,9 +263,11 @@ export const useEventStore = defineStore('event', () => {
 
   return {
     events,
+    eventTypes,
     currentEvent,
     loading,
     error,
+    fetchEventTypes,
     fetchEvents,
     fetchUserEvents,
     fetchJoinedEvents,

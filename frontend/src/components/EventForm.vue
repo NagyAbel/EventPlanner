@@ -5,138 +5,144 @@ import type {
   UpdateEventPayload,
 } from '@/stores/event'
 
-import { reactive, ref } from 'vue'
+import { reactive, ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useEventStore } from '@/stores/event'
 
 const { t } = useI18n()
-
-const defaultEvent: EventModel = {
-  id: -1,
-  name: '',
-  date: '',
-  location: '',
-  city: '',
-  cover_image: '',
-  type: '',
-  user_id: 0,
-  description: '',
-  public: true,
-  invited_emails: [],
-  attendee_count: 0,
-  is_attending: false,
-  owner: null,
-}
+const eventStore = useEventStore()
 
 const formData = reactive({
-  id: '',
+  id: 0,
   name: '',
   date: '',
   city: '',
   location: '',
-  type: '',
+  event_type_id: null as number | null,
   description: '',
-  public: true as EventModel['public'],
+  public: true,
   invited_emails: [] as string[],
   image: '',
   imageFile: null as File | null,
 })
 
-// Store validation messages keyed by field name
-const errors = reactive<Record<string, string>>({})
+// Combobox / Searchable Select states
+const typeSearchQuery = ref('')
+const isTypeDropdownOpen = ref(false)
 
+const filteredEventTypes = computed(() => {
+  const query = typeSearchQuery.value.trim().toLowerCase()
+  if (!query) return eventStore.eventTypes
+  return eventStore.eventTypes.filter((type) =>
+    type.name.toLowerCase().includes(query)
+  )
+})
+
+const selectedTypeName = computed(() => {
+  const found = eventStore.eventTypes.find((t) => t.id === formData.event_type_id)
+  return found ? found.name : ''
+})
+
+// Validation errors
+const errors = reactive<Record<string, string>>({})
 const inviteEmail = ref('')
 const inviteError = ref('')
 const imageError = ref('')
 const imageInput = ref<HTMLInputElement | null>(null)
 
-/**
- * Validates form fields and populates inline error messages.
- * Returns true if the form is valid.
- */
+onMounted(async () => {
+  if (eventStore.eventTypes.length === 0) {
+    await eventStore.fetchEventTypes()
+  }
+})
+
 function validate(): boolean {
-  // Clear previous errors
   Object.keys(errors).forEach((key) => delete errors[key])
   imageError.value = ''
 
   if (!formData.name.trim()) errors.name = t('eventForm.nameRequired')
-  if (!formData.type.trim()) errors.type = t('eventForm.typeRequired')
+  if (!formData.event_type_id) errors.event_type_id = t('eventForm.typeRequired')
   if (!formData.date) errors.date = t('eventForm.dateRequired')
   if (!formData.location.trim()) errors.location = t('eventForm.locationRequired')
   if (!formData.city.trim()) errors.city = t('eventForm.cityRequired')
-  if (!formData.description.trim()) errors.description = t('eventForm.descriptionRequired')
+  if (!formData.description) errors.description = t('eventForm.descriptionRequired')
   if (!formData.image && !formData.imageFile) imageError.value = t('eventForm.imageRequired')
 
   return Object.keys(errors).length === 0 && !imageError.value
 }
 
 /**
- * Load an existing event into the form.
+ * Load event or reset form if null/undefined is passed
  */
-function load(event: EventModel) {
-  const emails = Array.isArray(event.invited_emails) 
-    ? event.invited_emails.flat() 
-    : []
+function load(event?: Partial<EventModel> | null) {
+  const isEdit = Boolean(event?.id)
 
   Object.assign(formData, {
-    id: event.id,
-    name: event.name,
-    date: event.date,
-    city: event.city,
-    location: event.location,
-    type: event.type,
-    description: event.description,
-    public: Boolean(Number(event.public)),    
-    invited_emails: [...emails],
-    image: event.cover_image,
+    id: event?.id ?? 0,
+    name: event?.name ?? '',
+    date: event?.date ?? '',
+    city: event?.city ?? '',
+    location: event?.location ?? '',
+    event_type_id: event?.type?.id ?? null,
+    description: event?.description ?? '',
+    public: event?.public ?? true,
+    invited_emails: Array.isArray(event?.invited_emails) ? [...event.invited_emails.flat()] : [],
+    image: event?.cover_image ?? '',
     imageFile: null,
   })
 
-  // Clear errors when loading data
+  typeSearchQuery.value = isEdit ? (event?.type?.name ?? '') : ''
+
+  // Clear validation state
   Object.keys(errors).forEach((key) => delete errors[key])
   inviteEmail.value = ''
   inviteError.value = ''
   imageError.value = ''
+  if (imageInput.value) imageInput.value.value = ''
+}
 
-  if (imageInput.value) {
-    imageInput.value.value = ''
-  }
+function selectType(type: { id: number; name: string }) {
+  formData.event_type_id = type.id
+  typeSearchQuery.value = type.name
+  isTypeDropdownOpen.value = false
+  delete errors.event_type_id
+}
+
+function handleTypeBlur() {
+  setTimeout(() => {
+    isTypeDropdownOpen.value = false
+    typeSearchQuery.value = selectedTypeName.value
+    if (!selectedTypeName.value) {
+      formData.event_type_id = null
+    }
+  }, 200)
 }
 
 function triggerFileInput() {
   imageInput.value?.click()
 }
 
-function get(): CreateEventPayload {
+function buildPayload(): CreateEventPayload {
   return {
     name: formData.name,
     date: formData.date,
     city: formData.city,
     location: formData.location,
-    type: formData.type,
+    event_type_id: formData.event_type_id!,
     description: formData.description,
     public: formData.public,
-    invited_emails: Array.isArray(formData.invited_emails) ? [...formData.invited_emails] : [],
+    invited_emails: [...formData.invited_emails],
     cover_image: formData.imageFile,
   }
 }
 
-function getUpdatePayload(): UpdateEventPayload {
-  return {
-    name: formData.name,
-    date: formData.date,
-    city: formData.city,
-    location: formData.location,
-    type: formData.type,
-    description: formData.description,
-    public: formData.public,
-    invited_emails: Array.isArray(formData.invited_emails) ? [...formData.invited_emails] : [],
-    cover_image: formData.imageFile,
-  }
-}
+// Alias getters to share identical structure
+const get = buildPayload
+const getUpdatePayload = buildPayload as () => UpdateEventPayload
 
-function handleImageUpload(event: Event) {
+function handleImageUpload(e: Event) {
   imageError.value = ''
-  const input = event.target as HTMLInputElement
+  const input = e.target as HTMLInputElement
   const file = input.files?.[0]
 
   if (!file) return
@@ -147,8 +153,7 @@ function handleImageUpload(event: Event) {
     return
   }
 
-  const maxSize = 5 * 1024 * 1024
-  if (file.size > maxSize) {
+  if (file.size > 5 * 1024 * 1024) {
     imageError.value = t('eventForm.imageSizeError')
     input.value = ''
     return
@@ -159,14 +164,11 @@ function handleImageUpload(event: Event) {
 }
 
 function removeImage(e?: Event) {
-  if (e) e.stopPropagation()
+  e?.stopPropagation()
   formData.image = ''
   formData.imageFile = null
   imageError.value = ''
-
-  if (imageInput.value) {
-    imageInput.value.value = ''
-  }
+  if (imageInput.value) imageInput.value.value = ''
 }
 
 function addInviteEmail() {
@@ -179,8 +181,7 @@ function addInviteEmail() {
     return
   }
 
-  const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)
-  if (!isValidEmail) {
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)) {
     inviteError.value = t('eventForm.inviteEmailInvalid')
     return
   }
@@ -196,13 +197,11 @@ function addInviteEmail() {
 
 function removeInviteEmail(email: string) {
   if (formData.public) return
-  formData.invited_emails = formData.invited_emails.filter(
-    (entry) => entry !== email,
-  )
+  formData.invited_emails = formData.invited_emails.filter((entry) => entry !== email)
 }
 
 function reset() {
-  load(defaultEvent)
+  load(null)
 }
 
 defineExpose({
@@ -213,7 +212,6 @@ defineExpose({
   validate,
 })
 </script>
-
 <template>
   <form class="edit-form" novalidate @submit.prevent>
     <!-- Event name -->
@@ -229,18 +227,34 @@ defineExpose({
       <p v-if="errors.name" class="field-error">{{ errors.name }}</p>
     </label>
 
-    <!-- Event type -->
-    <label class="form-group">
+    <!-- Event type (Searchable Combobox) -->
+    <div class="form-group combobox-group">
       <span class="label-text">{{ t('eventForm.type') }}</span>
-      <input
-        v-model="formData.type"
-        type="text"
-        maxlength="40"
-        :class="{ 'has-error': errors.type }"
-        :placeholder="t('eventForm.typePlaceholder')"
-      />
-      <p v-if="errors.type" class="field-error">{{ errors.type }}</p>
-    </label>
+      <div class="combobox-wrapper">
+        <input
+          v-model="typeSearchQuery"
+          type="text"
+          :class="{ 'has-error': errors.event_type_id }"
+          :placeholder="t('eventForm.typePlaceholder')"
+          @focus="isTypeDropdownOpen = true"
+          @blur="handleTypeBlur"
+        />
+        <ul v-if="isTypeDropdownOpen" class="combobox-dropdown">
+          <li
+            v-for="type in filteredEventTypes"
+            :key="type.id"
+            :class="{ 'is-selected': type.id === formData.event_type_id }"
+            @mousedown.prevent="selectType(type)"
+          >
+            {{ type.name }}
+          </li>
+          <li v-if="filteredEventTypes.length === 0" class="no-results">
+            No types found
+          </li>
+        </ul>
+      </div>
+      <p v-if="errors.event_type_id" class="field-error">{{ errors.event_type_id }}</p>
+    </div>
 
     <!-- Date & Time -->
     <label class="form-group">
@@ -420,6 +434,51 @@ defineExpose({
   gap: 0.4rem;
 }
 
+/* COMBOBOX DROPDOWN STYLES */
+.combobox-group {
+  position: relative;
+}
+
+.combobox-wrapper {
+  position: relative;
+}
+
+.combobox-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 0.25rem;
+  background: #1e1e24;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 0.6rem;
+  max-height: 180px;
+  overflow-y: auto;
+  z-index: 50;
+  list-style: none;
+  padding: 0.4rem 0;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+}
+
+.combobox-dropdown li {
+  padding: 0.6rem 0.8rem;
+  font-size: 0.9rem;
+  color: var(--color-text);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.combobox-dropdown li:hover,
+.combobox-dropdown li.is-selected {
+  background: rgba(20, 184, 166, 0.2);
+  color: #fff;
+}
+
+.combobox-dropdown li.no-results {
+  color: var(--color-text-muted, #9ca3af);
+  cursor: default;
+}
+
 .form-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -446,6 +505,8 @@ defineExpose({
   font: inherit;
   font-size: 0.95rem;
   transition: border-color 0.15s ease;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .edit-form textarea {

@@ -16,6 +16,7 @@ class DatabaseSeeder extends Seeder
 
         // Create events using the existing users
         $this->call([
+            EventTypeSeeder::class,
             EventSeeder::class,
         ]);
     }

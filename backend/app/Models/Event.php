@@ -15,6 +15,7 @@ class Event extends Model
     protected $fillable = [
         'name',
         'description',
+        'event_type_id',
         'type',
         'date',
         'city',
@@ -51,5 +52,9 @@ class Event extends Model
     public function invites(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'invite_users');
+    }
+    public function eventType(): BelongsTo
+    {
+        return $this->belongsTo(EventType::class, 'event_type_id');
     }
 }

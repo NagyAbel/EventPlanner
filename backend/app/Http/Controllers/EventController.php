@@ -15,32 +15,34 @@ use Intervention\Image\Format;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use App\Http\Requests\SearchEventRequest;
+
 class EventController extends Controller
 {
     public function index(SearchEventRequest $request)
     {
         $perPage = min((int) $request->input('per_page', 10), 100);
-        $user = auth('sanctum')->user();;
+        $user = auth('sanctum')->user();
         $scope = $request->input('scope', 'public');
     
-        $events = Event::query()->with('owner')
+        $events = Event::query()
+            ->with(['owner', 'eventType']) // Eager load 'type' relationship
             ->when($user, function ($query) use ($user) {
                 $query->withExists(['attendees as is_attending' => function ($q) use ($user) {
                     $q->where('user_id', $user->id);
                 }]);
             })
-            //Events created by the user
+            // Events created by the user
             ->when($scope === 'own' && $user, function ($query) use ($user) {
                 $query->where('user_id', $user->id);
             })
-            //Events the user is attending
+            // Events the user is attending
             ->when($scope === 'joined' && $user, function ($query) use ($user) {
                 $query->whereHas('attendees', fn($q) => $q->where('user_id', $user->id));
             })
             ->when($scope === 'invited' && $user, function ($query) use ($user) {
                 $query->whereHas('invites', fn($q) => $q->where('user_id', $user->id));
             })            
-            //Default public/invited discovery list
+            // Default public/invited discovery list
             ->when($scope === 'public', function ($query) use ($user) {
                 $query->where(function ($q) use ($user) {
                     $q->where('public', true);
@@ -72,7 +74,9 @@ class EventController extends Controller
             'total'        => $events->total(),
         ]);
     }
-    public function show(Event $event){
+
+    public function show(Event $event)
+    {
         $user = auth('sanctum')->user();
 
         if (!$event->public) {
@@ -82,7 +86,7 @@ class EventController extends Controller
             abort_unless($isOwner || $isInvited, 403, 'This event is private.');
         }
 
-        return new EventResource($event->load('owner', 'invites'));
+        return new EventResource($event->load(['owner', 'invites', 'eventType']));
     }
 
     public function create(CreateEventRequest $request)
@@ -90,22 +94,17 @@ class EventController extends Controller
         $data = $request->validated();
 
         if ($request->hasFile('cover_image')) {
-            $oldImage = $request->cover_image;
-
             $manager = ImageManager::usingDriver(Driver::class);
             $image = $manager->decodePath($request->file('cover_image')->getRealPath());
             $image->scaleDown(
                 width: 1920,
                 height: 1080,
             );
-            $imageData = $image->encodeUsingFormat(Format::WEBP, quality: 65);;            
+            $imageData = $image->encodeUsingFormat(Format::WEBP, quality: 65);            
             $filename = Str::uuid() . '.webp';
             $path = 'events/covers/' . $filename;
 
             Storage::disk('public')->put($path, (string) $imageData);
-            if ($oldImage) {
-                Storage::disk('public')->delete($oldImage);
-            }
             $data['cover_image'] = $path;        
         }
 
@@ -113,34 +112,34 @@ class EventController extends Controller
             ->events()
             ->create($data);
 
-        return new EventResource($event->load('owner','invites'));
+        return new EventResource($event->load(['owner', 'invites', 'eventType']));
     }
 
     public function update(UpdateEventRequest $request, Event $event)
     {
-        abort_unless((int) $event->user_id === (int) $request->user()->id,403);
+        abort_unless((int) $event->user_id === (int) $request->user()->id, 403);
 
         $data = $request->validated();
 
         return DB::transaction(function () use ($request, $event, $data) {
             if ($request->hasFile('cover_image')) {
-            $oldImage = $event->cover_image;
+                $oldImage = $event->cover_image;
 
-            $manager = ImageManager::usingDriver(Driver::class);
-            $image = $manager->decodePath($request->file('cover_image')->getRealPath());
-            $image->scaleDown(width: 1920, height: 1080);
-            $imageData = $image->encodeUsingFormat(Format::WEBP, quality: 65);
-            
-            $filename = Str::uuid() . '.webp';
-            $path = 'events/covers/' . $filename;
+                $manager = ImageManager::usingDriver(Driver::class);
+                $image = $manager->decodePath($request->file('cover_image')->getRealPath());
+                $image->scaleDown(width: 1920, height: 1080);
+                $imageData = $image->encodeUsingFormat(Format::WEBP, quality: 65);
+                
+                $filename = Str::uuid() . '.webp';
+                $path = 'events/covers/' . $filename;
 
-            Storage::disk('public')->put($path, (string) $imageData);
-            
-            if ($oldImage) {
-                Storage::disk('public')->delete($oldImage);
-            }
-            
-            $data['cover_image'] = $path;
+                Storage::disk('public')->put($path, (string) $imageData);
+                
+                if ($oldImage) {
+                    Storage::disk('public')->delete($oldImage);
+                }
+                
+                $data['cover_image'] = $path;
             }
 
             $event->update($data);
@@ -153,7 +152,7 @@ class EventController extends Controller
                 $event->invites()->sync($userIds);
             }
 
-            return new EventResource($event->load('owner','invites'));
+            return new EventResource($event->load(['owner', 'invites', 'eventType']));
         });
     }
 
@@ -216,7 +215,7 @@ class EventController extends Controller
         $event = $result['event'];
         $isAttending = $result['is_attending'];
 
-        $event->load('owner');
+        $event->load(['owner', 'eventType']);
 
         $event->loadExists([
             'attendees as is_attending' => function ($query) use ($user) {

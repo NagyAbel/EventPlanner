@@ -1,15 +1,9 @@
-import type { User import { defineStore } from 'pinia'
-import { ref } from 'vue'
-import { authRequest } from '@/services/api'
-import type {
-  EventModel,
-  CreateEventPayload,
-  UpdateEventPayload,
-  EventsResponse,
-  EventResponse,
-  AttendEventResponse,
-  FetchEventsOptions,
-} from './event.types'} from '@/stores/auth'
+import type { User } from '@/stores/auth'
+
+export interface EventTypeModel {
+  id: number
+  name: string
+}
 
 export interface EventModel {
   id: number
@@ -18,7 +12,7 @@ export interface EventModel {
   city: string
   location: string
   cover_image: string
-  type: string
+  type: EventTypeModel
   user_id: number
   description: string | null
   public: boolean
@@ -28,13 +22,17 @@ export interface EventModel {
   owner: User | null
 }
 
+export interface EventTypesResponse {
+  data: EventTypeModel[]
+}
+
 export interface CreateEventPayload {
   name: string
   date: string
   city: string
   location: string
+  event_type_id: number
   cover_image: File | null
-  type: string
   description: string
   public: boolean
   invited_emails: string[]

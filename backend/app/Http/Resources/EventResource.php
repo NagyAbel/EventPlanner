@@ -11,15 +11,23 @@ class EventResource extends JsonResource
     public function toArray(Request $request): array
     {
         $user = $request->user();
+
         return [
             'id'             => $this->id,
             'name'           => $this->name,
             'description'    => $this->description,
-            'type'           => $this->type,
-            'date' => $this->date ? $this->date->format('Y-m-d\TH:i') : null,
+
+            'type' => $this->whenLoaded('eventType', function () {
+                return [
+                    'id'   => $this->eventType->id,
+                    'name' => $this->eventType->name,
+                ];
+            }),
+
+            'date'           => $this->date ? $this->date->format('Y-m-d\TH:i') : null,
             'city'           => $this->city,
             'location'       => $this->location,
-            'public'         => (int)$this->public,
+            'public'         => (int) $this->public,
             'cover_image'    => $this->cover_image
                 ? Storage::disk('public')->url($this->cover_image)
                 : null,
@@ -28,15 +36,17 @@ class EventResource extends JsonResource
                 return $this->invites->pluck('email');
             }),
 
-            'is_attending' =>  $user ? (isset($this->is_attending) ? (bool) $this->is_attending 
+            'is_attending' => $user ? (isset($this->is_attending) 
+                ? (bool) $this->is_attending 
                 : $this->attendees()->where('user_id', $user->id)->exists()) : false,
 
-            'owner'=> $this->whenLoaded('owner', function () {
+            'owner' => $this->whenLoaded('owner', function () {
                 return [
-                    'id'=>$this->owner->id,
+                    'id'    => $this->owner->id,
                     'name'  => $this->owner->name,
                     'email' => $this->owner->email,
                 ];
-            }),        ];
+            }),
+        ];
     }
 }

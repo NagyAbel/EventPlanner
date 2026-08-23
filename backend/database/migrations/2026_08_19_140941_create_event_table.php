@@ -8,15 +8,22 @@ return new class extends Migration
 {
     public function up(): void
     {
+        Schema::create('event_types', function (Blueprint $table) {
+            $table->id();
+            $table->string('name'); 
+        });
+
         Schema::create('events', function (Blueprint $table) {
             $table->id();
 
             $table->foreignId('user_id')
                 ->constrained()
                 ->cascadeOnDelete();
+            $table->foreignId('event_type_id')
+                ->constrained()
+                ->restrictOnDelete();
             $table->string('name');
             $table->text('description')->nullable();
-            $table->string('type');
             $table->dateTime('date');
             $table->string('city');
             $table->string('location');
@@ -30,5 +37,6 @@ return new class extends Migration
     public function down(): void
     {
         Schema::dropIfExists('events');
+        Schema::dropIfExists('event_types');
     }
 };

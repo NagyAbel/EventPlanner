@@ -2,6 +2,9 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
+import type {
+  EventTypeModel,
+} from '@/stores/event'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -12,7 +15,7 @@ interface EventCardProps {
   date: string
   location: string
   cover_image?: string | null
-  type: string
+  type: EventTypeModel
   description?: string | null
 }
 
@@ -112,7 +115,7 @@ function openEvent(editMode = false) {
 
       <!-- Floating Type Badge -->
       <span class="event-type-badge">
-        {{ props.type }}
+        {{ props.type.name }}
       </span>
 
       <!-- Title Overlay (Bottom-Left) -->

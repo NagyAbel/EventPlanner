@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Models\Event;
+use App\Models\EventType;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\File;
@@ -14,17 +15,13 @@ class EventFactory extends Factory
 
     public function definition(): array
     {
+        $eventData = $this->getRandomEventData();
+
         return [
             'user_id' => User::query()->inRandomOrder()->value('id'),
-            'name' => fake()->sentence(3),
-            'description' => fake()->paragraph(),
-            'type' => fake()->randomElement([
-                'concert',
-                'conference',
-                'party',
-                'sports',
-                'workshop',
-            ]),
+            'event_type_id' => EventType::query()->inRandomOrder()->value('id') ?? EventType::factory(),
+            'name' => $eventData['name'],
+            'description' => $eventData['description'],
             'date' => fake()->dateTimeBetween('now', '+6 months'),
             'city' => fake()->city(),
             'location' => fake()->address(),
@@ -48,6 +45,23 @@ class EventFactory extends Factory
             $event->attendee_count = $users->count();
             $event->save();
         });
+    }
+
+    private function getRandomEventData(): array
+    {
+        static $events;
+
+        if ($events === null) {
+            $jsonPath = database_path('data/events.json');
+
+            if (!File::exists($jsonPath)) {
+                throw new \RuntimeException("JSON file not found at: {$jsonPath}");
+            }
+
+            $events = json_decode(File::get($jsonPath), true) ?? [];
+        }
+
+        return fake()->randomElement($events);
     }
 
     private function copyRandomCoverImage(): string

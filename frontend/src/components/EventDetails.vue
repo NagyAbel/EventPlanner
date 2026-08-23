@@ -69,7 +69,7 @@ const visibilityLabel = (isPublic: EventModel['public']) => {
       </span>
 
       <div class="hero-overlay">
-        <span class="event-type">{{ props.event.type }}</span>
+        <span class="event-type">{{ props.event.type.name }}</span>
         <h2>{{ props.event.name }}</h2>
       </div>
     </div>
