@@ -96,7 +96,7 @@ function emitSearch() {
 <style scoped>
 .search_holder {
   position: sticky;
-  top: 100px;
+  top: 65px;
   z-index: 1000;
   width: 100%;
   display: flex;

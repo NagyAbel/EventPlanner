@@ -20,6 +20,13 @@ class CreateEventRequest extends FormRequest
             'date' => ['required', 'date'],
             'city' => ['required', 'string', 'max:255'],
             'location' => ['required', 'string', 'max:255'],
+            'invited_emails'   => ['sometimes', 'array','max:100'],
+            'invited_emails.*' => [
+            'sometimes',
+            'string',
+            'email',
+            'distinct',
+            'exists:users,email', ]            
             'public'=>['required','boolean'],
             'cover_image' => [
                 'required',

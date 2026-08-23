@@ -21,9 +21,9 @@ class UpdateEventRequest extends FormRequest
             'city' => ['sometimes', 'string', 'max:255'],
             'location' => ['sometimes', 'string', 'max:255'],
             'public'=>['required','boolean'],
-            'invited_emails'   => ['required', 'array','max:100'],
+            'invited_emails'   => ['sometimes', 'array','max:100'],
             'invited_emails.*' => [
-            'required',
+            'sometimes',
             'string',
             'email',
             'distinct',

@@ -102,7 +102,10 @@ async function handleSubmit() {
     router.replace({ query: { ...route.query, edit: '1' } })
     return
   }
+  const isValid = eventForm.value?.validate()
+  if (!isValid) return
 
+  
   errorMessage.value = ''
   const formData = eventForm.value?.get()
 
@@ -288,7 +291,7 @@ async function handleJoin() {
         {{ errorMessage }}
       </div>
 
-      <EventDetails v-if="!isCreateMode && (!isEditMode || !isOwner) && event" :event="event" />
+      <EventDetails v-if="!isCreateMode && !isEditMode && event" :event="event" />
       <EventForm v-else-if="isCreateMode || isEditMode" ref="eventForm" :editable="true" />
     </div>
   </section>

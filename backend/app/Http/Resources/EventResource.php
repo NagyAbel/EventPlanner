@@ -16,7 +16,7 @@ class EventResource extends JsonResource
             'name'           => $this->name,
             'description'    => $this->description,
             'type'           => $this->type,
-            'date'           => $this->date,
+            'date' => $this->date ? $this->date->format('Y-m-d\TH:i') : null,
             'city'           => $this->city,
             'location'       => $this->location,
             'public'         => (int)$this->public,

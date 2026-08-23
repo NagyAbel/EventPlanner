@@ -1,119 +1,188 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
-import profile from '@/assets/profile.svg'
+import profileIcon from '@/assets/profile.svg'
 import { useAuthStore } from '@/stores/auth'
 
 const { t } = useI18n()
 const router = useRouter()
 const auth = useAuthStore()
 
-function goToProfile() {
-   router.push('/profile')
+function goToDashboard() {
+  router.push('/profile')
 }
-function goToHome(){
-   router.push('/')
+
+function goToHome() {
+  router.push('/')
 }
 </script>
 
 <template>
-    <div class="header">
-            <div class="left_holder">
-               <button class="home_button" type="button" :aria-label="t('header.goToHomeAria')" @click="goToHome">
-                  {{ t("header.title") }}
-               </button>
+  <header class="app-header">
+    <div class="header-container">
+      <!-- Left: Logo / Brand Title -->
+      <div class="header-left">
+        <button
+          class="brand-button"
+          type="button"
+          :aria-label="t('header.goToHomeAria')"
+          @click="goToHome"
+        >
+          <span class="brand-title">{{ t("header.title") }}</span>
+        </button>
+      </div>
 
-            </div>
-            <div class = "right_holder">
-                        <button class="profile_button" type="button" :aria-label="t('header.openProfileAria')" @click="goToProfile">
-                           <img class="profile_icon" :src="profile" :alt="t('header.userProfileAlt')">
-                            <p class="profile_name">{{ auth.user?.name ?? t('header.guest') }}</p>
-                        </button>
-            </div>
+      <!-- Right: User Dashboard Control -->
+      <div class="header-right">
+        <button
+          class="dashboard-pill"
+          type="button"
+          :aria-label="t('header.openDashboardAria')"
+          @click="goToDashboard"
+        >
+          <div class="avatar-wrapper">
+            <img
+              class="profile-icon"
+              :src="profileIcon"
+              :alt="t('header.userProfileAlt')"
+            />
+          </div>
+          <div class="user-meta">
+            <span class="dashboard-label">Dashboard</span>
+            <span class="user-name">{{ auth.user?.name ?? t('header.guest') }}</span>
+          </div>
+        </button>
+      </div>
     </div>
+  </header>
 </template>
 
 <style scoped>
- .header{
-    width: 100%;
-    height: 100px;
-    margin:0px;
-   position: sticky;
-   top: 0;
-   z-index: 1000;
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  width: 100%;
+  height: 64px;
+  background-color: var(--color-secondary, rgba(20, 24, 33, 0.85));
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
 
-    background-color: var(--color-secondary);
-    display: flex;
-    justify-content: center;
-    align-items: center;
- }
- .left_holder{
-    box-sizing: border-box;
-    display: flex;
-    padding-left: 10px;
-    align-items: center;
-    height: 100%;
-    width: 50%;
- }
- .home_button{
-    border: 0;
-    padding: 0;
-    background: transparent;
-    color: inherit;
-    font: inherit;
-    font-size: 2em;
-    font-weight: bold;
-    cursor: pointer;
- }
- .home_button:focus-visible{
-    outline: 2px solid #ffffff;
-    outline-offset: 2px;
- }
- .right_holder{
-    width: 50%;
-    height: 100%;
-    display: flex;
-    justify-content: flex-end;
-    align-items: center;
-    padding-right: 16px;
-    box-sizing: border-box;
- }
- .profile_name{
-    width: 60%;
-    font-size: large;
-    text-align: center;
-    font-weight: bolder;
- }
+.header-container {
+  max-width: 1280px;
+  height: 100%;
+  margin: 0 auto;
+  padding: 0 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
 
- .profile_button {
-    width: 200px;
-    height: 50px;
-    border: 0;
-    border-radius: 30px;
-    background: rgba(255, 255, 255, 0.22);
-    color: #ffffff;
-    display: inline-flex;
-    align-items: center;
-    justify-content: left;
-    cursor: pointer;
- }
- .profile_icon{
-    filter: brightness(0) invert(1);
-    width: 50px;
-    height: 60%;
- }
- .profile_button svg {
-    width: 24px;
-    height: 24px;
-    fill: currentColor;
- }
+.header-left,
+.header-right {
+  display: flex;
+  align-items: center;
+}
 
- .profile_button:hover {
-    background: rgba(255, 255, 255, 0.3);
- }
+/* Brand Link */
+.brand-button {
+  background: transparent;
+  border: none;
+  padding: 0.25rem 0.5rem;
+  margin: 0;
+  cursor: pointer;
+  border-radius: 0.5rem;
+  transition: opacity 0.2s ease;
+}
 
- .profile_button:focus-visible {
-    outline: 2px solid #ffffff;
-    outline-offset: 2px;
- }
+.brand-button:hover {
+  opacity: 0.85;
+}
+
+.brand-button:focus-visible {
+  outline: 2px solid #14b8a6;
+  outline-offset: 2px;
+}
+
+.brand-title {
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #ffffff;
+}
+
+/* Dashboard User Pill */
+.dashboard-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.35rem 0.85rem 0.35rem 0.4rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #ffffff;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dashboard-pill:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(20, 184, 166, 0.5);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+
+
+.dashboard-pill:focus-visible {
+  outline: 2px solid #14b8a6;
+  outline-offset: 2px;
+}
+
+/* Avatar Circle */
+.avatar-wrapper {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(20, 184, 166, 0.2);
+  border: 1px solid rgba(20, 184, 166, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.profile-icon {
+  width: 18px;
+  height: 18px;
+  filter: brightness(0) invert(1);
+  object-fit: contain;
+}
+
+/* User Metadata Labels */
+.user-meta {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  line-height: 1.15;
+}
+
+.dashboard-label {
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #14b8a6;
+}
+
+.user-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #ffffff;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 </style>

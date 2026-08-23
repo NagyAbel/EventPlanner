@@ -153,7 +153,7 @@ class EventController extends Controller
                 $event->invites()->sync($userIds);
             }
 
-            return new EventResource($event);
+            return new EventResource($event->load('owner','invites'));
         });
     }
 

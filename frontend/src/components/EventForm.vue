@@ -37,13 +37,12 @@ const formData = reactive({
   description: '',
   public: true as EventModel['public'],
   invited_emails: [] as string[],
-
-  // Image URL/path currently displayed.
   image: '',
-
-  // Actual newly selected image file.
   imageFile: null as File | null,
 })
+
+// Store validation messages keyed by field name
+const errors = reactive<Record<string, string>>({})
 
 const inviteEmail = ref('')
 const inviteError = ref('')
@@ -51,10 +50,29 @@ const imageError = ref('')
 const imageInput = ref<HTMLInputElement | null>(null)
 
 /**
+ * Validates form fields and populates inline error messages.
+ * Returns true if the form is valid.
+ */
+function validate(): boolean {
+  // Clear previous errors
+  Object.keys(errors).forEach((key) => delete errors[key])
+  imageError.value = ''
+
+  if (!formData.name.trim()) errors.name = t('eventForm.nameRequired')
+  if (!formData.type.trim()) errors.type = t('eventForm.typeRequired')
+  if (!formData.date) errors.date = t('eventForm.dateRequired')
+  if (!formData.location.trim()) errors.location = t('eventForm.locationRequired')
+  if (!formData.city.trim()) errors.city = t('eventForm.cityRequired')
+  if (!formData.description.trim()) errors.description = t('eventForm.descriptionRequired')
+  if (!formData.image && !formData.imageFile) imageError.value = t('eventForm.imageRequired')
+
+  return Object.keys(errors).length === 0 && !imageError.value
+}
+
+/**
  * Load an existing event into the form.
  */
 function load(event: EventModel) {
-  // Normalize invited_emails to avoid nested arrays like [["email"]]
   const emails = Array.isArray(event.invited_emails) 
     ? event.invited_emails.flat() 
     : []
@@ -69,14 +87,12 @@ function load(event: EventModel) {
     description: event.description,
     public: Boolean(Number(event.public)),    
     invited_emails: [...emails],
-
-    // Existing image from backend
     image: event.cover_image,
-
-    // No new file selected yet
     imageFile: null,
   })
 
+  // Clear errors when loading data
+  Object.keys(errors).forEach((key) => delete errors[key])
   inviteEmail.value = ''
   inviteError.value = ''
   imageError.value = ''
@@ -90,9 +106,6 @@ function triggerFileInput() {
   imageInput.value?.click()
 }
 
-/**
- * Get a complete payload for creating an event.
- */
 function get(): CreateEventPayload {
   return {
     name: formData.name,
@@ -102,14 +115,11 @@ function get(): CreateEventPayload {
     type: formData.type,
     description: formData.description,
     public: formData.public,
-    invited_emails: Array.isArray(formData.invited_emails) ? formData.invited_emails : [],
+    invited_emails: Array.isArray(formData.invited_emails) ? [...formData.invited_emails] : [],
     cover_image: formData.imageFile,
   }
 }
 
-/**
- * Get the payload for updating an event.
- */
 function getUpdatePayload(): UpdateEventPayload {
   return {
     name: formData.name,
@@ -119,17 +129,13 @@ function getUpdatePayload(): UpdateEventPayload {
     type: formData.type,
     description: formData.description,
     public: formData.public,
-    invited_emails: Array.isArray(formData.invited_emails) ? formData.invited_emails : [],
+    invited_emails: Array.isArray(formData.invited_emails) ? [...formData.invited_emails] : [],
     cover_image: formData.imageFile,
   }
 }
 
-/**
- * Handle image upload.
- */
 function handleImageUpload(event: Event) {
   imageError.value = ''
-
   const input = event.target as HTMLInputElement
   const file = input.files?.[0]
 
@@ -142,7 +148,6 @@ function handleImageUpload(event: Event) {
   }
 
   const maxSize = 5 * 1024 * 1024
-
   if (file.size > maxSize) {
     imageError.value = t('eventForm.imageSizeError')
     input.value = ''
@@ -153,9 +158,6 @@ function handleImageUpload(event: Event) {
   formData.image = URL.createObjectURL(file)
 }
 
-/**
- * Remove the current image.
- */
 function removeImage(e?: Event) {
   if (e) e.stopPropagation()
   formData.image = ''
@@ -167,14 +169,9 @@ function removeImage(e?: Event) {
   }
 }
 
-/**
- * Add an invited email.
- */
 function addInviteEmail() {
   if (formData.public) return
-
   const normalized = inviteEmail.value.trim().toLowerCase()
-
   inviteError.value = ''
 
   if (!normalized) {
@@ -183,7 +180,6 @@ function addInviteEmail() {
   }
 
   const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)
-
   if (!isValidEmail) {
     inviteError.value = t('eventForm.inviteEmailInvalid')
     return
@@ -198,9 +194,6 @@ function addInviteEmail() {
   inviteEmail.value = ''
 }
 
-/**
- * Remove an invited email.
- */
 function removeInviteEmail(email: string) {
   if (formData.public) return
   formData.invited_emails = formData.invited_emails.filter(
@@ -208,9 +201,6 @@ function removeInviteEmail(email: string) {
   )
 }
 
-/**
- * Reset the form.
- */
 function reset() {
   load(defaultEvent)
 }
@@ -220,11 +210,12 @@ defineExpose({
   get,
   getUpdatePayload,
   reset,
+  validate,
 })
 </script>
 
 <template>
-  <form class="edit-form" @submit.prevent>
+  <form class="edit-form" novalidate @submit.prevent>
     <!-- Event name -->
     <label class="form-group">
       <span class="label-text">{{ t('eventForm.eventName') }}</span>
@@ -232,9 +223,10 @@ defineExpose({
         v-model="formData.name"
         type="text"
         maxlength="80"
-        required
+        :class="{ 'has-error': errors.name }"
         :placeholder="t('eventForm.eventNamePlaceholder')"
       />
+      <p v-if="errors.name" class="field-error">{{ errors.name }}</p>
     </label>
 
     <!-- Event type -->
@@ -244,15 +236,21 @@ defineExpose({
         v-model="formData.type"
         type="text"
         maxlength="40"
-        required
+        :class="{ 'has-error': errors.type }"
         :placeholder="t('eventForm.typePlaceholder')"
       />
+      <p v-if="errors.type" class="field-error">{{ errors.type }}</p>
     </label>
 
-    <!-- Date -->
+    <!-- Date & Time -->
     <label class="form-group">
       <span class="label-text">{{ t('eventForm.date') }}</span>
-      <input v-model="formData.date" type="date" required />
+      <input
+        v-model="formData.date"
+        type="datetime-local"
+        :class="{ 'has-error': errors.date }"
+      />
+      <p v-if="errors.date" class="field-error">{{ errors.date }}</p>
     </label>
 
     <!-- Grid row for Location & City -->
@@ -263,9 +261,10 @@ defineExpose({
           v-model="formData.location"
           type="text"
           maxlength="120"
-          required
+          :class="{ 'has-error': errors.location }"
           :placeholder="t('eventForm.locationPlaceholder')"
         />
+        <p v-if="errors.location" class="field-error">{{ errors.location }}</p>
       </label>
 
       <label class="form-group">
@@ -274,9 +273,10 @@ defineExpose({
           v-model="formData.city"
           type="text"
           maxlength="100"
-          required
+          :class="{ 'has-error': errors.city }"
           :placeholder="t('eventForm.cityPlaceholder')"
         />
+        <p v-if="errors.city" class="field-error">{{ errors.city }}</p>
       </label>
     </div>
 
@@ -306,7 +306,7 @@ defineExpose({
       </div>
 
       <!-- Upload Dropzone Placeholder State -->
-      <div v-else class="upload-dropzone" @click="triggerFileInput">
+      <div v-else :class="{ 'has-error': imageError }" class="upload-dropzone" @click="triggerFileInput">
         <svg
           class="upload-icon"
           fill="none"
@@ -334,9 +334,10 @@ defineExpose({
         v-model="formData.description"
         maxlength="1200"
         rows="5"
-        required
+        :class="{ 'has-error': errors.description }"
         :placeholder="t('eventForm.descriptionPlaceholder')"
       />
+      <p v-if="errors.description" class="field-error">{{ errors.description }}</p>
     </label>
 
     <!-- Visibility -->
@@ -398,7 +399,15 @@ defineExpose({
     </div>
   </form>
 </template>
+
 <style scoped>
+.edit-form input.has-error,
+.edit-form textarea.has-error,
+.edit-form select.has-error,
+.upload-dropzone.has-error {
+  border-color: #f43f5e;
+}
+
 .edit-form {
   display: flex;
   flex-direction: column;
@@ -425,6 +434,7 @@ defineExpose({
 
 .edit-form input[type='text'],
 .edit-form input[type='date'],
+.edit-form input[type='datetime-local'],
 .edit-form input[type='email'],
 .edit-form textarea,
 .edit-form select {

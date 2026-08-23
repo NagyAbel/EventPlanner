@@ -21,7 +21,8 @@
     "date":"Date",
     "location":"Location",
     "no_date":"No date set",
-    "public":"Public"
+    "public":"Public",
+    "description":"Description"
   },
 
   "event_details":{
@@ -75,26 +76,34 @@
   },
 
 
+
   "eventForm": {
     "eventName": "Event Name",
     "eventNamePlaceholder": "Enter event name",
+    "nameRequired": "Event name is required.",
     "type": "Type",
     "typePlaceholder": "Concert, party, meetup...",
-    "date": "Date",
+    "typeRequired": "Event type is required.",
+    "date": "Date & Time",
+    "dateRequired": "Date is required.",
     "location": "Location",
     "locationPlaceholder": "Street, venue, address...",
+    "locationRequired": "Location is required.",
     "city": "City",
     "cityPlaceholder": "e.g. Szeged",
+    "cityRequired": "City is required.",
     "coverImage": "Event Cover Image",
     "previewAlt": "Event preview",
     "changeImage": "Change",
     "removeImage": "Remove",
     "uploadTitle": "Click to upload cover image",
     "uploadHint": "PNG, JPG, or WEBP up to 5MB",
+    "imageRequired": "Cover image is required.",
     "imageTypeError": "Please select an image file.",
     "imageSizeError": "The image must be smaller than 5 MB.",
     "description": "Description",
     "descriptionPlaceholder": "Describe your event...",
+    "descriptionRequired": "Description is required.",
     "visibility": "Visibility",
     "public": "Public",
     "inviteOnly": "Invite Only",
@@ -107,6 +116,7 @@
     "inviteEmailInvalid": "Please enter a valid email address.",
     "inviteEmailDuplicate": "This user is already invited."
   },
+
 
   "pagination": {
     "previous": "Previous",

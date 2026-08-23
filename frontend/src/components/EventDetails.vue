@@ -16,22 +16,34 @@ const isOwner = computed(() => {
   return Number(props.event.owner.id) === Number(authStore.user.id)
 })
 
+const parseDate = (dateStr: string): Date | null => {
+  if (!dateStr) return null
+  const normalized = dateStr.includes(' ') ? dateStr.replace(' ', 'T') : dateStr
+  const dateObj = new Date(normalized)
+
+  return isNaN(dateObj.getTime()) ? null : dateObj
+}
+
 const formattedDate = (date: string) => {
-  if (!date) return t("event.no_date")
+  const dateObj = parseDate(date)
+  if (!dateObj) return t("event.no_date")
+
   return new Intl.DateTimeFormat('en-US', {
     weekday: 'short',
     year: 'numeric',
     month: 'short',
     day: 'numeric',
-  }).format(new Date(date))
+  }).format(dateObj)
 }
 
 const formattedTime = (date: string) => {
-  if (!date) return ''
+  const dateObj = parseDate(date)
+  if (!dateObj) return ''
+
   return new Intl.DateTimeFormat('en-US', {
     hour: 'numeric',
     minute: '2-digit',
-  }).format(new Date(date))
+  }).format(dateObj)
 }
 
 const visibilityLabel = (isPublic: EventModel['public']) => {
@@ -96,7 +108,7 @@ const visibilityLabel = (isPublic: EventModel['public']) => {
                 <p class="section-label">{{ t("event_details.attendees") }}</p>
                 <p class="section-value">{{ props.event.attendee_count ?? 0 }} {{t("event_details.going")}}</p>
                 <p v-if="!isOwner" class="section-secondary">
-                  {{ props.event.is_attending ? t("event_details.user_going")  : t("event_details.user_not_going")}}
+                  {{ props.event.is_attending ? t("event_details.user_going") : t("event_details.user_not_going")}}
                 </p>
               </div>
             </div>
