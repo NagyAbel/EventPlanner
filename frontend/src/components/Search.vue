@@ -1,18 +1,30 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import arrow from '@/assets/up_arrow.svg'
 import search_icon from '@/assets/search_options.svg'
 import type { FetchEventsOptions } from '@/stores/event'
+import { useEventStore } from '@/stores/event'
+
 const { t } = useI18n()
+const eventStore = useEventStore()
 const isSearchOpen = ref(true)
+
 const emit = defineEmits<{
   (e: 'search', filters: FetchEventsOptions): void
 }>()
+
 const filters = ref({
   city: '',
   search: '',
   date: '',
+  event_type_id: '' as number | '',
+})
+
+onMounted(async () => {
+  if (eventStore.eventTypes.length === 0) {
+    await eventStore.fetchEventTypes()
+  }
 })
 
 function emitSearch() {
@@ -20,9 +32,11 @@ function emitSearch() {
     city: filters.value.city,
     search: filters.value.search,
     date: filters.value.date,
+    ...(filters.value.event_type_id !== '' && {
+      event_type_id: Number(filters.value.event_type_id),
+    }),
   })
 }
-
 </script>
 
 <template>
@@ -67,12 +81,20 @@ function emitSearch() {
 
         <label class="field">
           <span class="field-label">{{ t('search.type') || 'Type' }}</span>
-          <select class="type_search" aria-label="Event type">
-            <option value="">All types</option>
-            <option value="conference">Conference</option>
-            <option value="concert">Concert</option>
-            <option value="festival">Festival</option>
-            <option value="workshop">Workshop</option>
+          <select 
+            v-model="filters.event_type_id" 
+            @change="emitSearch" 
+            class="type_search" 
+            aria-label="Event type"
+          >
+            <option value="">{{ t('search.all_types') || 'All types' }}</option>
+            <option 
+              v-for="type in eventStore.eventTypes" 
+              :key="type.id" 
+              :value="type.id"
+            >
+              {{ type.name }}
+            </option>
           </select>
         </label>
       </div>
@@ -286,8 +308,7 @@ function emitSearch() {
     gap: 0.7rem;
     justify-content: stretch;
     border-radius: 0;
-        margin:0px
-
+    margin: 0px;
   }
 
   .field,

@@ -15,6 +15,17 @@ import type {
 } from './event.types'
 export type * from './event.types'
 
+/**
+ * Normalizes incoming raw backend event data into a consistent JS format
+ */
+function normalizeEvent(event: any): EventModel {
+  if (!event) return event
+  return {
+    ...event,
+    public: Boolean(Number(event.public ?? event.is_public ?? 1)),
+  }
+}
+
 export const useEventStore = defineStore('event', () => {
   const events = ref<EventModel[]>([])
   const eventTypes = ref<EventTypeModel[]>([])
@@ -41,12 +52,13 @@ export const useEventStore = defineStore('event', () => {
    * Unified method to fetch public, user-owned, or joined events
    * Uses authRequest so optional Bearer tokens are attached if present
    */
-  async function fetchEvents(options: FetchEventsOptions = {}) {
+async function fetchEvents(options: FetchEventsOptions = {}) {
     const { 
       page = 1, 
       search = '', 
       city = '', 
       date = '', 
+      event_type_id,
       per_page, 
       scope = 'public' 
     } = options
@@ -62,14 +74,19 @@ export const useEventStore = defineStore('event', () => {
       if (search.trim()) params.append('search', search.trim())
       if (city.trim()) params.append('city', city.trim())
       if (date) params.append('date', date)
+      if (event_type_id) params.append('event_type_id', event_type_id.toString())
       if (per_page) params.append('per_page', per_page.toString())
 
       const response = await authRequest<EventsResponse>(`/api/event?${params.toString()}`)
-      const pageEvents = response.data
+      
+      const pageEvents = response.data.map(normalizeEvent)
 
       events.value = pageEvents
 
-      return response
+      return {
+        ...response,
+        data: pageEvents,
+      }
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to load events.'
       throw err
@@ -98,8 +115,9 @@ export const useEventStore = defineStore('event', () => {
 
     try {
       const response = await authRequest<EventResponse>(`/api/event/show/${id}`)
-      currentEvent.value = response.data
-      return response.data
+      const event = normalizeEvent(response.data)
+      currentEvent.value = event
+      return event
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to load event.'
       throw err
@@ -135,7 +153,7 @@ export const useEventStore = defineStore('event', () => {
         body: formData,
       })
 
-      const event = response.data
+      const event = normalizeEvent(response.data)
 
       events.value.push(event)
       currentEvent.value = event
@@ -173,7 +191,7 @@ export const useEventStore = defineStore('event', () => {
         body: formData,
       })
 
-      const event = response.data
+      const event = normalizeEvent(response.data)
 
       // Update in all local lists where it might exist
       const updateList = (list: EventModel[]) => {
@@ -231,7 +249,7 @@ export const useEventStore = defineStore('event', () => {
         { method: 'POST' }
       )
 
-      const updatedEvent = response.event
+      const updatedEvent = normalizeEvent(response.event)
 
       const updateList = (list: EventModel[]) => {
         const idx = list.findIndex((item) => Number(item.id) === id)
@@ -244,7 +262,10 @@ export const useEventStore = defineStore('event', () => {
         currentEvent.value = updatedEvent
       }
 
-      return response
+      return {
+        ...response,
+        event: updatedEvent,
+      }
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to update attendance status.'
       throw err

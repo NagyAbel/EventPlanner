@@ -60,8 +60,18 @@ class EventController extends Controller
                     ->orWhere('description', 'like', "%{$search}%");
                 });
             })
-            ->when($request->filled('city'), fn($q) => $q->where('city', $request->input('city')))
+            ->when($request->filled('city'), function ($query) use ($request) {
+                $city = $request->input('city');
+
+                $query->where(function ($q) use ($city) {
+                    $q->where('city', 'like', "%{$city}%")
+                    ->orWhere('location', 'like', "%{$city}%");
+                });
+            })
+
+            
             ->when($request->filled('date'), fn($q) => $q->whereDate('date', $request->input('date')))
+            ->when($request->filled('event_type_id'), fn($q) => $q->where('event_type_id', $request->input('event_type_id')))
             ->orderByDesc('date')
             ->orderByDesc('id')
             ->paginate($perPage);

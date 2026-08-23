@@ -68,6 +68,7 @@ export interface FetchEventsOptions {
   search?: string
   city?: string
   date?: string
+  event_type_id?: number | string
   per_page?: number
   scope?: EventScope
 }

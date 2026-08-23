@@ -130,7 +130,8 @@
     "date":"Date",
     "type":"Type",
     "location_hint":"Where do you want to go?",
-    "search_hint":"Search events, speakers, or venues"
+    "search_hint":"Search events, speakers, or venues",
+    "all_types":"All types"
   },
 
   

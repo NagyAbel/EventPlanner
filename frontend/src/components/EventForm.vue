@@ -76,7 +76,7 @@ function validate(): boolean {
  */
 function load(event?: Partial<EventModel> | null) {
   const isEdit = Boolean(event?.id)
-
+  console.log(event?.public)
   Object.assign(formData, {
     id: event?.id ?? 0,
     name: event?.name ?? '',

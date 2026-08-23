@@ -14,6 +14,7 @@ interface EventCardProps {
   name: string
   date: string
   location: string
+  city:string
   cover_image?: string | null
   type: EventTypeModel
   description?: string | null
@@ -75,6 +76,7 @@ function openEvent(editMode = false) {
     name: props.name,
     date: props.date,
     location: props.location,
+    city:props.city,
     cover_image: props.cover_image,
     type: props.type,
   }
@@ -146,7 +148,7 @@ function openEvent(editMode = false) {
         <div class="meta-item meta-item-location">
           <dt>{{ labels.location }}</dt>
           <dd :title="props.location">
-            {{ props.location || '—' }}
+            {{ props.city + ', ' + props.location || '—' }}
           </dd>
         </div>
       </dl>
