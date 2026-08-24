@@ -23,6 +23,7 @@ docker compose up -d
 docker compose exec backend php artisan key:generate
 docker compose exec backend php artisan migrate
 docker compose exec backend php artisan db:seed
+docker compose exec backend chown -R www-data:www-data storage bootstrap/cache
 ```
 
 ### 4. Access the Application
