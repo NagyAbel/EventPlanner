@@ -1,9 +1,0 @@
-{
-  "signup": {
-    "title": "Regisztráció",
-    "name": "Név",
-    "email": "E-mail",
-    "password": "Jelszó",
-    "button": "Regisztráció"
-  }
-}

@@ -3,12 +3,13 @@ import { computed } from 'vue'
 import type { EventModel } from '@/stores/event'
 import { useAuthStore } from '@/stores/auth'
 import { useI18n } from 'vue-i18n'
+import { formatDate, formatTime } from '@/utils/date'
 
 const props = defineProps<{
   event: EventModel
 }>()
-const { t } = useI18n()
 
+const { t, locale } = useI18n()
 const authStore = useAuthStore()
 
 const isOwner = computed(() => {
@@ -16,34 +17,12 @@ const isOwner = computed(() => {
   return Number(props.event.owner.id) === Number(authStore.user.id)
 })
 
-const parseDate = (dateStr: string): Date | null => {
-  if (!dateStr) return null
-  const normalized = dateStr.includes(' ') ? dateStr.replace(' ', 'T') : dateStr
-  const dateObj = new Date(normalized)
-
-  return isNaN(dateObj.getTime()) ? null : dateObj
-}
-
 const formattedDate = (date: string) => {
-  const dateObj = parseDate(date)
-  if (!dateObj) return t("event.no_date")
-
-  return new Intl.DateTimeFormat('en-US', {
-    weekday: 'short',
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  }).format(dateObj)
+  return formatDate(date, locale.value) || t('event.no_date')
 }
 
 const formattedTime = (date: string) => {
-  const dateObj = parseDate(date)
-  if (!dateObj) return ''
-
-  return new Intl.DateTimeFormat('en-US', {
-    hour: 'numeric',
-    minute: '2-digit',
-  }).format(dateObj)
+  return formatTime(date, locale.value)
 }
 
 const visibilityLabel = (isPublic: EventModel['public']) => {

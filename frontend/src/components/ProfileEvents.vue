@@ -20,12 +20,10 @@ const { t } = useI18n()
 const currentPage = ref(1)
 const totalPages = ref(1)
 
-// Dynamic array selector based on active tab
 const displayedEvents = computed(() => {
   return eventStore.events
 })
 
-// Dynamic empty state message
 const emptyStateMessage = computed(() => {
   switch (props.tab) {
     case 'joined-events':

@@ -2,11 +2,12 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
+import { formatDate, formatTime } from '@/utils/date'
 import type {
   EventTypeModel,
 } from '@/stores/event'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const router = useRouter()
 
 interface EventCardProps {
@@ -30,38 +31,8 @@ const labels = {
 }
 
 const eventId = computed(() => String(props.id))
-
-/**
- * Normalizes date strings (supports YYYY-MM-DDTHH:mm and standard ISO timestamps)
- * into a valid JS Date object.
- */
-const parseDate = (dateStr: string): Date | null => {
-  if (!dateStr) return null
-  const normalized = dateStr.includes(' ') ? dateStr.replace(' ', 'T') : dateStr
-  const dateObj = new Date(normalized)
-  return isNaN(dateObj.getTime()) ? null : dateObj
-}
-
-const formattedDate = computed(() => {
-  const dateObj = parseDate(props.date)
-  if (!dateObj) return labels.noDate
-
-  return new Intl.DateTimeFormat('en-US', {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-  }).format(dateObj)
-})
-
-const formattedTime = computed(() => {
-  const dateObj = parseDate(props.date)
-  if (!dateObj) return ''
-
-  return new Intl.DateTimeFormat('en-US', {
-    hour: 'numeric',
-    minute: '2-digit',
-  }).format(dateObj)
-})
+const formattedDate = computed(() => formatDate(props.date, locale.value) || labels.noDate)
+const formattedTime = computed(() => formatTime(props.date, locale.value))
 
 function openEvent(editMode = false) {
   const id = eventId.value

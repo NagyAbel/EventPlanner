@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
-const { t } = useI18n()
+const { t, te } = useI18n()
 const router = useRouter()
 const auth = useAuthStore()
 
@@ -12,6 +12,7 @@ type AuthMode = 'login' | 'signup'
 
 const mode = ref<AuthMode>('login')
 const feedback = ref('')
+const feedbackType = ref<'error' | 'success'>('error')
 
 const form = reactive({
   name: '',
@@ -25,8 +26,34 @@ function setMode(nextMode: AuthMode) {
   feedback.value = ''
 }
 
+function getErrorMessage(error: unknown): string {
+  if (typeof error === 'object' && error !== null) {
+    const errObj = error as { response?: { data?: { code?: string; message?: string } }; code?: string; message?: string }
+    
+    // Extract backend error code or default error message
+    const code = errObj.response?.data?.code || errObj.code
+    if (code) {
+      const translationKey = `auth.errors.${code}`
+      if (te(translationKey)) {
+        return t(translationKey)
+      }
+    }
+    
+    if (errObj.response?.data?.message) {
+      return errObj.response.data.message
+    }
+    
+    if (errObj.message) {
+      return errObj.message
+    }
+  }
+  
+  return t('auth.errors.failed')
+}
+
 async function submitAuth() {
   feedback.value = ''
+  feedbackType.value = 'error'
 
   if (mode.value === 'signup' && !form.name.trim()) {
     feedback.value = t('auth.errors.nameRequired')
@@ -54,19 +81,23 @@ async function submitAuth() {
         form.password,
         form.passwordConfirmation,
       )
+      
+      // Redirect to login tab after successful signup
+      mode.value = 'login'
+      form.password = ''
+      form.passwordConfirmation = ''
+      feedbackType.value = 'success'
+      feedback.value = t('auth.signupSuccess')
     } else {
       await auth.login(
         form.email,
         form.password,
       )
+      await router.push('/profile')
     }
-
-    await router.push('/profile')
   } catch (error) {
-    feedback.value =
-      error instanceof Error
-        ? error.message
-        : t('auth.errors.failed')
+    feedbackType.value = 'error'
+    feedback.value = getErrorMessage(error)
   }
 }
 </script>
@@ -190,6 +221,7 @@ async function submitAuth() {
       <p
         v-if="feedback"
         class="feedback"
+        :class="feedbackType"
       >
         {{ feedback }}
       </p>
@@ -314,8 +346,21 @@ h1 {
 
 .feedback {
   margin: 0.8rem 0 0;
-  color: var(--color-text);
   font-size: 0.88rem;
+  padding: 0.6rem;
+  border-radius: 0.5rem;
+}
+
+.feedback.error {
+  color: #f87171;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.feedback.success {
+  color: #34d399;
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.2);
 }
 
 @media (max-width: 560px) {

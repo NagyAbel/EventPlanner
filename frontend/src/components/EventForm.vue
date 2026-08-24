@@ -1,17 +1,22 @@
 <script setup lang="ts">
-import type {
-  EventModel,
-  CreateEventPayload,
-  UpdateEventPayload,
-} from '@/stores/event'
-
+import type { EventModel } from '@/stores/event'
 import { reactive, ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useEventStore } from '@/stores/event'
 
 const { t } = useI18n()
 const eventStore = useEventStore()
+
 const isValidatingEmail = ref(false)
+const typeSearchQuery = ref('')
+const isTypeDropdownOpen = ref(false)
+
+const inviteEmail = ref('')
+const inviteError = ref('')
+const imageError = ref('')
+const imageInput = ref<HTMLInputElement | null>(null)
+const errors = reactive<Record<string, string>>({})
+
 const formData = reactive({
   id: 0,
   name: '',
@@ -26,10 +31,6 @@ const formData = reactive({
   imageFile: null as File | null,
 })
 
-// Combobox / Searchable Select states
-const typeSearchQuery = ref('')
-const isTypeDropdownOpen = ref(false)
-
 const filteredEventTypes = computed(() => {
   const query = typeSearchQuery.value.trim().toLowerCase()
   if (!query) return eventStore.eventTypes
@@ -39,16 +40,8 @@ const filteredEventTypes = computed(() => {
 })
 
 const selectedTypeName = computed(() => {
-  const found = eventStore.eventTypes.find((t) => t.id === formData.event_type_id)
-  return found ? found.name : ''
+  return eventStore.eventTypes.find((t) => t.id === formData.event_type_id)?.name ?? ''
 })
-
-// Validation errors
-const errors = reactive<Record<string, string>>({})
-const inviteEmail = ref('')
-const inviteError = ref('')
-const imageError = ref('')
-const imageInput = ref<HTMLInputElement | null>(null)
 
 onMounted(async () => {
   if (eventStore.eventTypes.length === 0) {
@@ -56,9 +49,15 @@ onMounted(async () => {
   }
 })
 
-function validate(): boolean {
+function clearValidationErrors() {
   Object.keys(errors).forEach((key) => delete errors[key])
+  inviteError.value = ''
   imageError.value = ''
+  if (imageInput.value) imageInput.value.value = ''
+}
+
+function validate(): boolean {
+  clearValidationErrors()
 
   if (!formData.name.trim()) errors.name = t('eventForm.nameRequired')
   if (!formData.event_type_id) errors.event_type_id = t('eventForm.typeRequired')
@@ -71,12 +70,9 @@ function validate(): boolean {
   return Object.keys(errors).length === 0 && !imageError.value
 }
 
-/**
- * Load event or reset form if null/undefined is passed
- */
 function load(event?: Partial<EventModel> | null) {
   const isEdit = Boolean(event?.id)
-  console.log(event?.public)
+  
   Object.assign(formData, {
     id: event?.id ?? 0,
     name: event?.name ?? '',
@@ -86,19 +82,14 @@ function load(event?: Partial<EventModel> | null) {
     event_type_id: event?.type?.id ?? null,
     description: event?.description ?? '',
     public: event?.public ?? true,
-    invited_emails: Array.isArray(event?.invited_emails) ? [...event.invited_emails.flat()] : [],
+    invited_emails: Array.isArray(event?.invited_emails) ? [...event.invited_emails] : [],
     image: event?.cover_image ?? '',
     imageFile: null,
   })
 
   typeSearchQuery.value = isEdit ? (event?.type?.name ?? '') : ''
-
-  // Clear validation state
-  Object.keys(errors).forEach((key) => delete errors[key])
   inviteEmail.value = ''
-  inviteError.value = ''
-  imageError.value = ''
-  if (imageInput.value) imageInput.value.value = ''
+  clearValidationErrors()
 }
 
 function selectType(type: { id: number; name: string }) {
@@ -122,23 +113,19 @@ function triggerFileInput() {
   imageInput.value?.click()
 }
 
-function buildPayload(): CreateEventPayload {
+function buildPayload() {
   return {
     name: formData.name,
     date: formData.date,
     city: formData.city,
     location: formData.location,
-    event_type_id: formData.event_type_id!,
+    event_type_id: formData.event_type_id ?? 0,
     description: formData.description,
     public: formData.public,
     invited_emails: [...formData.invited_emails],
     cover_image: formData.imageFile,
   }
 }
-
-// Alias getters to share identical structure
-const get = buildPayload
-const getUpdatePayload = buildPayload as () => UpdateEventPayload
 
 function handleImageUpload(e: Event) {
   imageError.value = ''
@@ -181,7 +168,8 @@ async function addInviteEmail() {
     return
   }
 
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)) {
+  const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  if (!EMAIL_REGEX.test(normalized)) {
     inviteError.value = t('eventForm.inviteEmailInvalid')
     return
   }
@@ -191,13 +179,11 @@ async function addInviteEmail() {
     return
   }
 
-  // Validate email existence via backend API
   isValidatingEmail.value = true
   try {
     const userExists = await eventStore.validateInvite(normalized)
-
     if (!userExists) {
-      inviteError.value = t('eventForm.inviteUserNotFound') // Add your translation key
+      inviteError.value = t('eventForm.inviteUserNotFound')
       return
     }
 
@@ -219,8 +205,8 @@ function reset() {
 
 defineExpose({
   load,
-  get,
-  getUpdatePayload,
+  get: buildPayload,
+  getUpdatePayload: buildPayload,
   reset,
   validate,
 })

@@ -32,6 +32,7 @@ async function getCsrfCookie(force = false): Promise<void> {
 function resetCsrfCookie() {
   csrfPromise = null
 }
+
 function handleUnauthorized() {
   if (router.currentRoute.value.path !== '/auth') {
     router.push({
@@ -62,10 +63,22 @@ async function performRequest(endpoint: string, options: RequestInit = {}): Prom
   })
 }
 
+export class ApiError extends Error {
+  status: number
+  data: any
+
+  constructor(message: string, status: number, data: any) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = status
+    this.data = data
+  }
+}
+
 async function parseResponse<T>(response: Response): Promise<T> {
   const data = await response.json().catch(() => null)
   if (!response.ok) {
-    throw new Error(data?.message ?? 'Something went wrong.')
+    throw new ApiError(data?.message ?? 'Something went wrong.', response.status, data)
   }
   return data
 }
@@ -86,11 +99,14 @@ export async function authRequest<T>(endpoint: string, options: RequestInit = {}
     response = await performRequest(endpoint, options)
   }
 
-  if (response.status === 401) {
+  const isAuthEndpoint = endpoint.includes('/auth') || endpoint.includes('/auth')
+
+  if (response.status === 401 && !isAuthEndpoint) {
     window.dispatchEvent(new Event('auth:unauthorized'))
-    throw new Error('Your session has expired.')
+    throw new ApiError('Your session has expired.', 401, null)
   }
 
   return parseResponse<T>(response)
 }
+
 window.addEventListener('auth:unauthorized', handleUnauthorized)

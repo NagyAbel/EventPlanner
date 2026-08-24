@@ -22,6 +22,7 @@ docker compose up -d
 ```bash
 docker compose exec backend php artisan key:generate
 docker compose exec backend php artisan migrate
+docker compose exec backend php artisan db:seed
 ```
 
 ### 4. Access the Application

@@ -44,8 +44,6 @@ async function saveName() {
     await auth.updateName(newName)
   } catch (error) {
     console.error('Name update failed:', error)
-
-    // Restore the value from the server if the request failed.
     name.value = auth.user.name
   } finally {
     savingName.value = false

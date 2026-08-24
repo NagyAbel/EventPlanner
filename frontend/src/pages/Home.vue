@@ -44,19 +44,15 @@ onMounted(() => {
   <Search @search="handleSearch" />
   <main class="home-page">
     <div class="content-wrapper">
-      <!-- FADE TRANSITION FOR STATES -->
       <Transition name="fade-switch" mode="out-in">
-        <!-- LOADING STATE -->
         <div v-if="eventStore.loading" key="loading" class="state-container">
           <p class="state-text">{{ t('home.loading') }}</p>
         </div>
 
-        <!-- EMPTY STATE -->
         <div v-else-if="!eventStore.events.length" key="empty" class="state-container">
           <p class="state-text">{{ t('home.noEvents') }}</p>
         </div>
 
-        <!-- EVENTS GRID WITH SMOOTH FADE IN -->
         <div v-else key="events" class="event-holder">
           <Event
             v-for="event in eventStore.events"

@@ -52,7 +52,7 @@ export const useEventStore = defineStore('event', () => {
    * Unified method to fetch public, user-owned, or joined events
    * Uses authRequest so optional Bearer tokens are attached if present
    */
-async function fetchEvents(options: FetchEventsOptions = {}) {
+  async function fetchEvents(options: FetchEventsOptions = {}) {
     const { 
       page = 1, 
       search = '', 
