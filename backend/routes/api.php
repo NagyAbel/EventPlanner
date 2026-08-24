@@ -7,12 +7,15 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\EventTypeController;
 
 Route::prefix('user')->controller(UserController::class)->group(function () {
-    Route::post('/signup', 'signup');
-    Route::post('/auth', 'auth');
+    Route::post('/signup', 'signup')->middleware('throttle:20,1');
+    Route::post('/auth', 'auth')->middleware('throttle:20,1');
+    
 
     Route::middleware('auth:sanctum')->group(function () {
         Route::post('/logout', 'logout');
-        Route::post('/name', 'update');
+         Route::post('/validate-email', 'validateEmail')->middleware('throttle:30,1');
+        Route::post('/name', 'update')->middleware('throttle:30,1');
+        
         Route::get('/', function (Request $request) {
             return response()->json([
                 'user' => $request->user(),
@@ -20,15 +23,17 @@ Route::prefix('user')->controller(UserController::class)->group(function () {
         });
     });
 });
-Route::get('/event-types', [EventTypeController::class, 'index']);
+
+Route::get('/event-types', [EventTypeController::class, 'index'])->middleware('throttle:30,1');
+
 Route::prefix('event')->controller(EventController::class)->group(function () {
-    Route::get('/', 'index');    
-    Route::get('/show/{event}', 'show');
+    Route::get('/', 'index')->middleware('throttle:60,1');    
+    Route::get('/show/{event}', 'show')->middleware('throttle:60,1');
 
     Route::middleware('auth:sanctum')->group(function () {
-        Route::post('/create', 'create');
-        Route::put('/update/{event}', 'update');
-        Route::delete('/delete/{event}', 'delete');
-        Route::post('/attend/{event}', 'attend');
+        Route::post('/create', 'create')->middleware('throttle:20,1');
+        Route::put('/update/{event}', 'update')->middleware('throttle:30,1');
+        Route::delete('/delete/{event}', 'delete')->middleware('throttle:20,1');
+        Route::post('/attend/{event}', 'attend')->middleware('throttle:30,1');
     });
 });

@@ -14,7 +14,16 @@ class SearchEventRequest extends FormRequest
    public function rules(): array
     {
         return [
-            'scope'    => ['sometimes', 'string', 'in:public,own,joined,invited'],
+            'scope' => [
+            'sometimes',
+            'string',
+            'in:public,own,joined,invited',
+            function ($attribute, $value, $fail) {
+                if ($value !== 'public' && !$this->user('sanctum')) {
+                    $fail('You must be logged in to access this scope.');
+                }
+            },
+            ],
             'search'   => ['sometimes', 'nullable', 'string', 'max:255'],
             'city'     => ['sometimes', 'nullable', 'string', 'max:255'],
             'date'     => ['sometimes', 'nullable', 'date'],

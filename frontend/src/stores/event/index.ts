@@ -273,7 +273,17 @@ async function fetchEvents(options: FetchEventsOptions = {}) {
       loading.value = false
     }
   }
-
+  async function validateInvite(email: string): Promise<boolean> {
+    try {
+      const response = await authRequest<{ exists: boolean }>('/api/user/validate-email', {
+        method: 'POST',
+        body: JSON.stringify({ email }),
+      })
+      return Boolean(response.exists)
+    } catch {
+      return false
+    }
+  }
   function clearError() {
     error.value = null
   }
@@ -300,5 +310,6 @@ async function fetchEvents(options: FetchEventsOptions = {}) {
     joinEvent,
     clearError,
     clearCurrentEvent,
+    validateInvite,
   }
 })

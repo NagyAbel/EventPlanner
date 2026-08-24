@@ -76,8 +76,7 @@
   },
 
 
-
-  "eventForm": {
+"eventForm": {
     "eventName": "Event Name",
     "eventNamePlaceholder": "Enter event name",
     "nameRequired": "Event name is required.",
@@ -114,9 +113,10 @@
     "removeEmail": "Remove email",
     "inviteEmailRequired": "Please enter an email address.",
     "inviteEmailInvalid": "Please enter a valid email address.",
-    "inviteEmailDuplicate": "This user is already invited."
+    "inviteEmailDuplicate": "This user is already invited.",
+    "inviteUserNotFound": "No account found with this email address.",
+    "validating": "Validating..."
   },
-
 
   "pagination": {
     "previous": "Previous",

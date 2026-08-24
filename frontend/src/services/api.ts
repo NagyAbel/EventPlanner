@@ -33,7 +33,6 @@ function resetCsrfCookie() {
   csrfPromise = null
 }
 function handleUnauthorized() {
-  window.dispatchEvent(new Event('auth:unauthorized'))
   if (router.currentRoute.value.path !== '/auth') {
     router.push({
       path: '/auth',

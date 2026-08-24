@@ -11,7 +11,7 @@ import { useEventStore } from '@/stores/event'
 
 const { t } = useI18n()
 const eventStore = useEventStore()
-
+const isValidatingEmail = ref(false)
 const formData = reactive({
   id: 0,
   name: '',
@@ -171,7 +171,7 @@ function removeImage(e?: Event) {
   if (imageInput.value) imageInput.value.value = ''
 }
 
-function addInviteEmail() {
+async function addInviteEmail() {
   if (formData.public) return
   const normalized = inviteEmail.value.trim().toLowerCase()
   inviteError.value = ''
@@ -191,8 +191,21 @@ function addInviteEmail() {
     return
   }
 
-  formData.invited_emails.push(normalized)
-  inviteEmail.value = ''
+  // Validate email existence via backend API
+  isValidatingEmail.value = true
+  try {
+    const userExists = await eventStore.validateInvite(normalized)
+
+    if (!userExists) {
+      inviteError.value = t('eventForm.inviteUserNotFound') // Add your translation key
+      return
+    }
+
+    formData.invited_emails.push(normalized)
+    inviteEmail.value = ''
+  } finally {
+    isValidatingEmail.value = false
+  }
 }
 
 function removeInviteEmail(email: string) {
@@ -376,16 +389,17 @@ defineExpose({
           type="email"
           maxlength="120"
           :placeholder="t('eventForm.emailPlaceholder')"
-          :disabled="formData.public"
+          :disabled="formData.public || isValidatingEmail"
           @keyup.enter.prevent="addInviteEmail"
         />
 
         <button
           type="button"
           class="btn-add"
-          :disabled="formData.public"
+          :disabled="formData.public || isValidatingEmail"
           @click="addInviteEmail"
         >
+         <span v-if="isValidatingEmail" class="spinner"></span>
           {{ t('eventForm.add') }}
         </button>
       </div>
@@ -403,7 +417,7 @@ defineExpose({
             type="button"
             class="tag-remove"
             :title="t('eventForm.removeEmail')"
-            :disabled="formData.public"
+            :disabled="formData.public || isValidatingEmail"
             @click="removeInviteEmail(email)"
           >
             &times;
@@ -442,7 +456,27 @@ defineExpose({
 .combobox-wrapper {
   position: relative;
 }
+.btn-add:disabled,
+.invite-input-row input:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
 
+.spinner {
+  display: inline-block;
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: #fff;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
 .combobox-dropdown {
   position: absolute;
   top: 100%;

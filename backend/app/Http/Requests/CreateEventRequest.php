@@ -16,9 +16,7 @@ class CreateEventRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
-            
             'event_type_id' => ['required', 'integer', 'exists:event_types,id'],
-            
             'date' => ['required', 'date'],
             'city' => ['required', 'string', 'max:255'],
             'location' => ['required', 'string', 'max:255'],

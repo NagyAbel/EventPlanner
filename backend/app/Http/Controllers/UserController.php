@@ -15,10 +15,7 @@ class UserController extends Controller
     public function signup(SignupRequest $request)
     {
         $user = User::create($request->validated());
-
-        return response()->json([
-            'user' => $user,
-        ], 201);
+        return response()->json(['user' => $user,], 201);
     }
 
     public function auth(LoginRequest $request)
@@ -49,13 +46,15 @@ class UserController extends Controller
     public function update(UpdateUserRequest $request){
         $user = $request->user();
 
-        $user->update([
-            'name' => $request->validated('name'),
-        ]);
+        $user->update(['name' => $request->validated('name'),]);
+        return response()->json(['user' => $user->fresh(),]);
+    }
 
-        return response()->json([
-            'user' => $user->fresh(),
-        ]);
-
+    public function validateEmail(Request $request)
+    {
+        $request->validate(['email' => ['required', 'email'],]);
+        $exists = User::where('email', strtolower(trim($request->email)))->exists();
+        
+        return response()->json(['exists' => $exists,]);
     }
 }
