@@ -8,9 +8,7 @@ class UpdateUserRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        $event = $this->route('event');
-
-        return $event && (int) $event->user_id === (int) $this->user()?->id;
+        return $this->user() !== null;
     }
     public function rules(): array
     {
