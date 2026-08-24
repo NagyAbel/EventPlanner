@@ -11,7 +11,7 @@ class EventSeeder extends Seeder
     public function run(): void
     {
         Artisan::call('events:download-covers', [
-            'count' => 40,
+            'count' => 80,
         ], $this->command->getOutput());
 
         Event::factory()
